@@ -1,0 +1,13 @@
+{
+	"id": "giardino_botanico",
+	"start": "inizio",
+	"characters": {},
+	"nodes": {
+		"inizio": {
+			"background": {"image": "res://assets/backgrounds/giardino_botanico.png", "color": "#2f5a45"},
+			"clear_characters": true,
+			"text": "Il giardino botanico è silenzioso. [i](Dialogo segnaposto: da scrivere.)[/i]",
+			"next": "@map"
+		}
+	}
+}

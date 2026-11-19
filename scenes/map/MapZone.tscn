@@ -1,0 +1,74 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/map/MapZone.gd" id="1_zone"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_zone"]
+content_margin_left = 20.0
+content_margin_top = 20.0
+content_margin_right = 20.0
+content_margin_bottom = 20.0
+bg_color = Color(0.45, 0.33, 0.2, 0.94)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1, 0.9, 0.7, 0.85)
+corner_radius_top_left = 28
+corner_radius_top_right = 28
+corner_radius_bottom_right = 28
+corner_radius_bottom_left = 28
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 12
+shadow_offset = Vector2(0, 6)
+
+[node name="MapZone" type="TextureButton"]
+offset_right = 400.0
+offset_bottom = 240.0
+grow_horizontal = 2
+grow_vertical = 2
+ignore_texture_size = true
+stretch_mode = 5
+script = ExtResource("1_zone")
+
+[node name="Placeholder" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_zone")
+
+[node name="Labels" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+alignment = 1
+
+[node name="NameLabel" type="Label" parent="Labels"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.97, 0.9, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.7)
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 44
+text = "Location"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="StatusLabel" type="Label" parent="Labels"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.62, 0.55, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.7)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 34
+text = "Chiuso"
+horizontal_alignment = 1

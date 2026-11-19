@@ -1,0 +1,104 @@
+{
+	"id": "giardinetti",
+	"start": "inizio",
+	"characters": {
+		"capitano": {
+			"name": "Capitano Arno",
+			"color": "#8a3b3b",
+			"default_expression": "serio",
+			"expressions": {
+				"serio": "res://assets/characters/capitano/serio.png",
+				"divertito": "res://assets/characters/capitano/divertito.png"
+			}
+		},
+		"lia": {
+			"name": "Lia la mercante",
+			"color": "#4f8f55",
+			"default_expression": "allegra",
+			"expressions": {
+				"allegra": "res://assets/characters/lia/lia.webp",
+				"sospettosa": "res://assets/characters/lia/lia.webp"
+			}
+		}
+	},
+	"nodes": {
+		"inizio": {
+			"background": {"image": "res://assets/backgrounds/giardinetti.png", "color": "#4a5a3a"},
+			"characters": {"center": {"id": "capitano"}},
+			"text": "La piazza è animata dal mercato. Accanto alla fontana, il capitano della guardia osserva la folla.",
+			"next": "capitano_saluto"
+		},
+		"capitano_saluto": {
+			"speaker": "capitano",
+			"text": "Hai l'aria di chi cerca guai. O di chi sa risolverli. Quale delle due?",
+			"choices": [
+				{
+					"text": "Voglio rendermi utile. Allenami.",
+					"effects": {"stats": {"forza": 1}, "flags": {"allenato_dal_capitano": true}},
+					"next": "capitano_allenamento"
+				},
+				{
+					"text": "Ho la chiave della cripta.",
+					"requires": {"items": ["chiave_antica"]},
+					"hidden_if_locked": true,
+					"effects": {"karma": 2, "flags": {"avvertito_loft": true}},
+					"next": "capitano_chiave"
+				},
+				{
+					"text": "Cerco solo un po' di pace.",
+					"next": "lia_intro"
+				}
+			]
+		},
+		"capitano_allenamento": {
+			"speaker": "capitano",
+			"characters": {"center": {"id": "capitano", "expression": "divertito"}},
+			"text": "Non male! Sudi come un mulo, ma impari in fretta. [i](Forza +1)[/i]",
+			"next": "lia_intro"
+		},
+		"capitano_chiave": {
+			"speaker": "capitano",
+			"text": "Allora stai attento: lì sotto non si scherza. Se senti voci, non rispondere con la spada.",
+			"next": "lia_intro"
+		},
+		"lia_intro": {
+			"characters": {"center": null, "left": {"id": "capitano"}, "right": {"id": "lia"}},
+			"speaker": "lia",
+			"text": "Ehi, tu! Mi aiuti a scaricare il carro? Ti pago bene.",
+			"choices": [
+				{
+					"text": "Volentieri, passami quelle casse.",
+					"requires": {"stats": {"forza": 2}},
+					"effects": {"karma": 2, "items": {"moneta": 3}},
+					"next": "lia_grazie"
+				},
+				{
+					"text": "Pagami in anticipo e vedrai che lavoro.",
+					"requires": {"stats": {"carisma": 2}},
+					"effects": {"karma": -2, "items": {"moneta": 5}},
+					"next": "lia_raggirata"
+				},
+				{
+					"text": "Ho da fare, scusa.",
+					"next": "fine"
+				}
+			]
+		},
+		"lia_grazie": {
+			"speaker": "lia",
+			"text": "Che braccia! Ecco le tue monete, te le sei guadagnate.",
+			"next": "fine"
+		},
+		"lia_raggirata": {
+			"speaker": "lia",
+			"characters": {"right": {"id": "lia", "expression": "sospettosa"}},
+			"text": "Mh... va bene, ma che sia l'ultima volta.",
+			"next": "fine"
+		},
+		"fine": {
+			"clear_characters": true,
+			"text": "Il sole cala dietro i tetti della piazza.",
+			"next": "@map"
+		}
+	}
+}

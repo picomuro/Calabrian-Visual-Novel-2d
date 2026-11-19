@@ -1,0 +1,149 @@
+{
+	"id": "spiaggia",
+	"start": "inizio",
+	"characters": {
+		"oste": {
+			"name": "Bruno l'oste",
+			"color": "#b5803a",
+			"default_expression": "neutro",
+			"expressions": {
+				"neutro": "res://assets/characters/oste/neutro.png",
+				"sorridente": "res://assets/characters/oste/sorridente.png",
+				"arrabbiato": "res://assets/characters/oste/arrabbiato.png"
+			}
+		},
+		"mirta": {
+			"name": "Mirta",
+			"color": "#6a8fbf",
+			"default_expression": "preoccupata",
+			"expressions": {
+				"preoccupata": "res://assets/characters/mirta/preoccupata.png",
+				"sollevata": "res://assets/characters/mirta/sollevata.png"
+			}
+		}
+	},
+	"nodes": {
+		"inizio": {
+			"background": {"image": "res://assets/backgrounds/spiaggia.webp", "color": "#4a7fb5"},
+			"characters": {"center": {"id": "oste", "expression": "neutro"}},
+			"text": "La taverna del Corvo è fumosa e rumorosa. Dietro al bancone, l'oste ti squadra da capo a piedi.",
+			"effects": {"flags": {"visitato_spiaggia": true}},
+			"next": "oste_saluto"
+		},
+		"oste_saluto": {
+			"speaker": "oste",
+			"text": "Una faccia nuova, eh? Qui non si fa credito. Cosa ti porta da queste parti?",
+			"choices": [
+				{
+					"text": "Cerco qualcuno che abbia bisogno d'aiuto.",
+					"effects": {"karma": 5},
+					"next": "oste_gentile"
+				},
+				{
+					"text": "Non sono affari tuoi.",
+					"effects": {"karma": -5},
+					"next": "oste_brusco"
+				},
+				{
+					"text": "Offrimi da bere e ti racconto una storia.",
+					"requires": {"stats": {"carisma": 3}},
+					"effects": {"stats": {"carisma": 1}},
+					"next": "oste_storia"
+				},
+				{
+					"text": "Te ne vai senza dire una parola.",
+					"next": "uscita"
+				}
+			]
+		},
+		"oste_gentile": {
+			"speaker": "oste",
+			"characters": {
+				"center": null,
+				"left": {"id": "oste", "expression": "sorridente"},
+				"right": {"id": "mirta"}
+			},
+			"text": "Parole rare, di questi tempi. Allora parla con la vecchia Mirta, laggiù: è da giorni che non chiude occhio.",
+			"next": "mirta_racconto"
+		},
+		"mirta_racconto": {
+			"speaker": "mirta",
+			"text": "La cripta sotto la chiesa... qualcosa si muove là sotto. Ho la chiave, ma le mie mani tremano troppo per usarla.",
+			"choices": [
+				{
+					"text": "Dammi la chiave, ci penso io.",
+					"effects": {"karma": 5, "items": {"chiave_antica": 1}, "flags": {"loft_aperto": true}},
+					"next": "mirta_grazie"
+				},
+				{
+					"text": "Quanto mi paghi?",
+					"effects": {"karma": -3, "items": {"chiave_antica": 1, "moneta": 5}, "flags": {"loft_aperto": true}},
+					"next": "mirta_pagamento"
+				},
+				{
+					"text": "Prendi queste monete per un pasto caldo.",
+					"requires": {"items": {"moneta": 3}},
+					"effects": {"karma": 10, "items": {"moneta": -3, "chiave_antica": 1}, "flags": {"loft_aperto": true}},
+					"next": "mirta_grazie"
+				},
+				{
+					"text": "Osservi i simboli incisi sulla chiave.",
+					"requires": {"stats": {"intelligenza": 2}},
+					"hidden_if_locked": true,
+					"effects": {"stats": {"intelligenza": 1}, "items": {"chiave_antica": 1}, "flags": {"loft_aperto": true, "simboli_letti": true}},
+					"next": "mirta_grazie"
+				}
+			]
+		},
+		"mirta_grazie": {
+			"speaker": "mirta",
+			"characters": {"right": {"id": "mirta", "expression": "sollevata"}},
+			"text": "Che il cielo ti protegga. Ecco, prendila... e torna da noi, mi raccomando.",
+			"next": "commiato"
+		},
+		"mirta_pagamento": {
+			"speaker": "mirta",
+			"text": "Cinque monete. È tutto quello che ho. Tieni anche la chiave, e vattene.",
+			"next": "commiato"
+		},
+		"oste_brusco": {
+			"speaker": "oste",
+			"characters": {"center": {"id": "oste", "expression": "arrabbiato"}},
+			"text": "Come vuoi. Bevi e non darmi fastidio.",
+			"next": "commiato"
+		},
+		"oste_storia": {
+			"speaker": "oste",
+			"characters": {"center": {"id": "oste", "expression": "sorridente"}},
+			"text": "Ah, mi piace chi sa parlare! Siediti, il primo boccale lo offre la casa.",
+			"next": "commiato"
+		},
+		"commiato": {
+			"branches": [
+				{"requires": {"karma_tier": "buono"}, "next": "commiato_buono"},
+				{"requires": {"karma_tier": "cattivo"}, "next": "commiato_cattivo"}
+			],
+			"next": "commiato_neutro"
+		},
+		"commiato_buono": {
+			"speaker": "oste",
+			"text": "Torna quando vuoi. Qui c'è sempre un posto per chi ha il cuore buono.",
+			"next": "uscita"
+		},
+		"commiato_neutro": {
+			"speaker": "oste",
+			"text": "Buona fortuna, là fuori.",
+			"next": "uscita"
+		},
+		"commiato_cattivo": {
+			"speaker": "oste",
+			"text": "E non farti più vedere da queste parti.",
+			"next": "uscita"
+		},
+		"uscita": {
+			"clear_characters": true,
+			"text": "Esci nell'aria fredda della sera.",
+			"next": "@map"
+		}
+	}
+}

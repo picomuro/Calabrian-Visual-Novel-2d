@@ -1,0 +1,77 @@
+{
+	"id": "loft",
+	"start": "inizio",
+	"characters": {
+		"spirito": {
+			"name": "Spirito inquieto",
+			"color": "#8a72c8",
+			"default_expression": "triste",
+			"expressions": {
+				"triste": "res://assets/characters/spirito/spirito.webp",
+				"sereno": "res://assets/characters/spirito/spirito.webp",
+				"furioso": "res://assets/characters/spirito/spirito.webp"
+			}
+		}
+	},
+	"nodes": {
+		"inizio": {
+			"background": {"image": "res://assets/backgrounds/loft.png", "color": "#1a1a24"},
+			"clear_characters": true,
+			"branches": [
+				{"requires": {"flags": {"spirito_liberato": true}}, "next": "gia_liberato"}
+			],
+			"next": "ingresso"
+		},
+		"ingresso": {
+			"text": "Giri la chiave antica nella serratura. La porta della cripta si apre con un lamento di cardini arrugginiti.",
+			"next": "spirito_appare"
+		},
+		"spirito_appare": {
+			"characters": {"center": {"id": "spirito"}},
+			"speaker": "spirito",
+			"text": "Chi osa disturbare il mio riposo? Sono secoli che nessuno scende fin quaggiù...",
+			"choices": [
+				{
+					"text": "Sono qui per aiutarti a trovare pace.",
+					"effects": {"karma": 10},
+					"next": "spirito_pace"
+				},
+				{
+					"text": "Leggi ad alta voce i simboli incisi sulla chiave.",
+					"requires": {"flags": {"simboli_letti": true}},
+					"hidden_if_locked": true,
+					"effects": {"karma": 5, "stats": {"intelligenza": 1}},
+					"next": "spirito_pace"
+				},
+				{
+					"text": "Dimmi dov'è il tesoro, o ti caccio via.",
+					"effects": {"karma": -10},
+					"next": "spirito_ira"
+				}
+			]
+		},
+		"spirito_pace": {
+			"speaker": "spirito",
+			"characters": {"center": {"id": "spirito", "expression": "sereno"}},
+			"text": "Finalmente... Prendi il mio medaglione. Che ti protegga come non ha saputo proteggere me.",
+			"effects": {"items": {"medaglione": 1}, "flags": {"spirito_liberato": true}},
+			"next": "uscita"
+		},
+		"spirito_ira": {
+			"speaker": "spirito",
+			"characters": {"center": {"id": "spirito", "expression": "furioso"}},
+			"text": "Avidità... sempre e solo avidità! Vattene!",
+			"effects": {"flags": {"spirito_adirato": true}},
+			"next": "uscita"
+		},
+		"gia_liberato": {
+			"text": "La cripta ora è silenziosa. L'aria non è più gelida come prima.",
+			"next": "uscita"
+		},
+		"uscita": {
+			"clear_characters": true,
+			"text": "Risali le scale di pietra e torni alla luce.",
+			"next": "@map"
+		}
+	}
+}

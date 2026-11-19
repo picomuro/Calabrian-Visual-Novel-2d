@@ -1,0 +1,161 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/dialogue/DialogueScene.gd" id="1_scene"]
+[ext_resource type="Script" path="res://scenes/dialogue/DialogueRunner.gd" id="2_runner"]
+[ext_resource type="PackedScene" path="res://scenes/dialogue/CharacterSlot.tscn" id="3_slot"]
+[ext_resource type="Script" path="res://scenes/ui/SafeAreaMargin.gd" id="4_safe"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_textbox"]
+content_margin_left = 44.0
+content_margin_top = 32.0
+content_margin_right = 44.0
+content_margin_bottom = 32.0
+bg_color = Color(0.06, 0.05, 0.09, 0.9)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.85, 0.7, 0.4, 0.6)
+corner_radius_top_left = 28
+corner_radius_top_right = 28
+corner_radius_bottom_right = 28
+corner_radius_bottom_left = 28
+
+[node name="DialogueScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_scene")
+
+[node name="BackgroundColor" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.12, 0.1, 0.14, 1)
+
+[node name="BackgroundTexture" type="TextureRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Characters" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchor_left = 0.04
+anchor_top = 0.02
+anchor_right = 0.96
+anchor_bottom = 0.8
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="LeftSlot" parent="Characters" instance=ExtResource("3_slot")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CenterSlot" parent="Characters" instance=ExtResource("3_slot")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RightSlot" parent="Characters" instance=ExtResource("3_slot")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SafeArea" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("4_safe")
+
+[node name="Layout" type="VBoxContainer" parent="SafeArea"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 28
+alignment = 2
+
+[node name="ChoicesArea" type="Control" parent="SafeArea/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="ChoicesBox" type="VBoxContainer" parent="SafeArea/Layout/ChoicesArea"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchor_left = 0.6
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 16
+
+[node name="TextPanel" type="PanelContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_textbox")
+
+[node name="TextVBox" type="VBoxContainer" parent="SafeArea/Layout/TextPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="SpeakerLabel" type="Label" parent="SafeArea/Layout/TextPanel/TextVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+text = "Nome"
+
+[node name="TextLabel" type="RichTextLabel" parent="SafeArea/Layout/TextPanel/TextVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/normal_font_size = 40
+theme_override_font_sizes/bold_font_size = 40
+theme_override_font_sizes/italics_font_size = 40
+bbcode_enabled = true
+text = "Testo del dialogo"
+fit_content = true
+scroll_active = false
+
+[node name="ContinueIndicator" type="Label" parent="SafeArea/Layout/TextPanel/TextVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.7, 0.4, 1)
+text = "Tocca per continuare »"
+horizontal_alignment = 2
+
+[node name="DialogueRunner" type="Node" parent="."]
+script = ExtResource("2_runner")
+
+[connection signal="background_changed" from="DialogueRunner" to="." method="_on_runner_background_changed"]
+[connection signal="character_shown" from="DialogueRunner" to="." method="_on_runner_character_shown"]
+[connection signal="character_hidden" from="DialogueRunner" to="." method="_on_runner_character_hidden"]
+[connection signal="line_ready" from="DialogueRunner" to="." method="_on_runner_line_ready"]
+[connection signal="choices_ready" from="DialogueRunner" to="." method="_on_runner_choices_ready"]
+[connection signal="dialogue_finished" from="DialogueRunner" to="." method="_on_runner_dialogue_finished"]

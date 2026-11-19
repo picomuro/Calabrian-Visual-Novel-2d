@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://data/ItemData.gd" id="1_item"]
+
+[sub_resource type="Gradient" id="Gradient_icon"]
+colors = PackedColorArray(0.85, 0.75, 1, 1, 0.35, 0.22, 0.55, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_icon"]
+gradient = SubResource("Gradient_icon")
+width = 128
+height = 128
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.9, 0.9)
+
+[resource]
+script = ExtResource("1_item")
+id = "medaglione"
+display_name = "Medaglione dello spirito"
+description = "Un medaglione d'argento ossidato. Quando lo stringi, senti un lieve tepore."
+icon = SubResource("GradientTexture2D_icon")

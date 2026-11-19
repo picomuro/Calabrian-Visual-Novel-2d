@@ -1,0 +1,64 @@
+# INTRO - Viaggio in macchina verso Soverato. La madre dorme.
+[background arg="res://assets/backgrounds/viaggio_auto.webp" fade="1.0"]
+join Tu left
+join Padre right
+(Entrambe le cuffiette nelle orecchie.)
+(Ti togli una cuffietta.)
+Tu: Che due coglioni... proprio adesso dovevamo andare a Soverato, ho finito la sessione cinque giorni fa!
+Tu: Ma poi le prime due settimane di agosto! I miei amici sono tutti a Ibiza e io me ne devo stare al mare con la 'nduja!
+Padre: Smettila di fare i capricci, che non sei più un bambin*. Meno male che tua mamma si è finalmente addormentata, così non ti sente.
+Padre: Ma non ti rendi conto che potrebbe essere l'ultimo Ferragosto con tua nonna?
+Padre: (Abbassa la voce) Già penso che non festeggeremo il Natale insieme quest'anno...
+Tu: [i](È vero... nonnina mia...)[/i]
+Padre: Che poi più che il Ferragosto, mi raccomando, è l'ultima Madonna a mare di tua nonna... sai quanto ci tiene...
+- Hai ragione...
+	do GameState.add_karma(5)
+	Tu: Hai ragione...
+- Ma che palle, domani sera suona Tony Pitony all'Ushuaia!
+	do GameState.add_karma(-5)
+	Tu: Ma che palle, domani sera suona Tony Pitony all'Ushuaia! E poi smettetela di parlare come se la nonna fosse già morta!
+	Padre: Ma sei veramente un coglione! Io non ti ho cresciuto così.
+	Padre: Non so cosa ti sia successo, forse vi siete fumati il cervello coi tuoi amici del cazzo.
+	- Ma vaffanculo!
+		do GameState.add_karma(-10)
+		Tu: Ma vaffanculo!
+		(Ti rimetti la cuffietta.)
+		Padre: Ma come cazzo fai ad essere così, ma porca Madonna!
+		join Madre center
+		(La mamma si sveglia. Parte il litigio...)
+		leave Madre
+	- (Resti in silenzio)
+		(Resti in silenzio.)
+- (Resti in silenzio)
+	(Resti in silenzio.)
+
+label casa_nonna
+# CASA DELLA NONNA - Fuori casa, con le valigie.
+leave --All--
+[background arg="res://assets/backgrounds/casa_nonna.webp" fade="1.0"]
+join Tu left
+join Padre center
+join Madre right
+Tu: Meno male che siamo arrivati, mi sto pisciando addosso!
+Padre: Non scappare, dobbiamo scaricare le valigie.
+(Scendete dalla macchina.)
+join Irina rightmost
+Irina: Buonasera signori, spero che il viaggio sia andato bene... posso aiutarvi con le valigie?
+- Non prendi nessuna valigia e corri a pisciare
+	do GameState.add_karma(-2)
+	Tu: Scusate, mi sto pisciando addosso!
+	(Corri in bagno.)
+	Padre: Sei il solito fraccomodo!
+	Madre: Si na testa e cazzu. Scusalo Irina, questi ragazzi di oggi...
+- Chiedi a Irina di portarti le valigie
+	do GameState.add_karma(-5)
+	Tu: Certo, guarda, se vuoi questo è il mio zaino, e la mia valigia è quella verde nel bagagliaio.
+	# TODO: nel copione questa battuta del padre era tagliata nella foto, da completare.
+	Padre: Ma quindi le mani le usi solo per scrivere cazzate al telefono? Ma perché pensi che...
+	Padre: Usa quelle cazzo di braccia finché ti funzionano!
+	Madre: U principinu do cazzu arrivau. Io non ti ho cresciuto così.
+	(Prendi le valigie ed entri in silenzio.)
+- Prendi le valigie e chiedi a Irina di farti strada
+	do GameState.add_karma(5)
+	Tu: Non ti preoccupare Irina, faccio io, grazie.
+leave --All--
