@@ -45,7 +45,7 @@ Le scene ricevono i parametri con `receive_params(params)`, che SceneManager chi
 
 **Dialogo JSON** (`data/dialogues/*.json`):
 - Campi principali: `{id, start, characters:{id:{name,color,default_expression,expressions}}, nodes:{...}}`.
-- Ogni nodo ha: `background`, `characters:{left|center|right: id o null}`, `clear_characters`, `speaker`, `text`, `effects`, `choices:[{text,next,effects,requires,hidden_if_locked}]`, `branches`, `next`.
+- Ogni nodo ha: `background` (`"#rrggbb"`, percorso immagine o `{image, color}`), `characters:{left|center|right: {id, expression} | "id" | null}`, `clear_characters`, `speaker`, `text`, `effects`, `choices:[{text,next,effects,requires,hidden_if_locked}]`, `branches`, `next`.
 - Uscite possibili: `@end`, `@map`, `@location:<id>`.
 
 **Note sul formato JSON:**
@@ -61,16 +61,19 @@ Le scene ricevono i parametri con `receive_params(params)`, che SceneManager chi
 - **Immagini protette da copyright** (fan art e foto di un attore): spirito, irina, padre. La repo deve **restare privata**; se diventa pubblica vanno rimosse dalla storia git.
 
 ## Da fare
+Stato verificato sul codice il 2026-11-21: nessuna di queste voci è ancora iniziata.
+
 **Step originali mancanti:**
-- 4. Inventario e HUD (karma, stats) come overlay.
-- 5. UI e flusso di salvataggio/caricamento.
-- 6. README con: come aggiungere un dialogo, un oggetto, una zona; export Android (JDK, Android SDK, export templates); export iOS (Mac con Xcode).
+- 4. Inventario e HUD (karma, stats) come overlay. Non esiste ancora nessuna scena; `SceneManager.open_overlay` è già pronto per ospitarle.
+- 5. UI e flusso di salvataggio/caricamento. Oggi nessun file chiama `SaveManager.save_game`/`load_game`: il gioco non salva mai.
+- 6. README con: come aggiungere un dialogo, un oggetto, una zona; export Android (JDK, Android SDK, export templates); export iOS (Mac con Xcode). Il commento in testa a `DialogueRunner.gd` rimanda già al README, che non esiste.
 
 **Refactoring proposto (non ancora approvato, chiedi prima):**
-- 4. Validatore più completo.
+- 4. Validatore più completo. Oggi `validate()` controlla nodo iniziale, destinazioni, slot e id dei personaggi. Non controlla chiavi di `effects`/`requires`, espressioni, file di sfondo e ritratti, né se le `@location:<id>` esistono.
 - 5. Salvataggio solo dalla mappa.
-- 6. Salvataggi più robusti: versioning e migrazione.
+- 6. Salvataggi più robusti: versioning e migrazione. Oggi `from_dict` dà solo un warning se la versione è più recente e non migra.
 - 7. Effetti "una volta sola": oggi gli effetti si riapplicano rivisitando un nodo e le ricompense si possono ripetere (farming).
 - 8. Più test.
+- ~~9. Un solo sistema di dialoghi~~: fatto, Dialogic è stato rimosso.
 - 10. Registro condiviso di personaggi e location (oggi ogni file JSON ridefinisce i propri personaggi).
-- 11. Pulizia.
+- 11. Pulizia (es. i `.gitkeep` rimasti in cartelle non più vuote, `project/assembly_name="Madonna-s Quest"` nella sezione dotnet).
