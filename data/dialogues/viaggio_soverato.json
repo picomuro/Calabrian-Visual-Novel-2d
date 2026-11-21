@@ -1,40 +1,6 @@
 {
 	"id": "viaggio_soverato",
 	"start": "intro_01",
-	"characters": {
-		"tu": {
-			"name": "Tu",
-			"color": "#f2c759",
-			"default_expression": "default",
-			"expressions": {
-				"default": "res://assets/characters/spirito/spirito.webp"
-			}
-		},
-		"padre": {
-			"name": "Padre",
-			"color": "#7aa84d",
-			"default_expression": "default",
-			"expressions": {
-				"default": "res://assets/characters/padre/padre.webp"
-			}
-		},
-		"madre": {
-			"name": "Madre",
-			"color": "#d97a8c",
-			"default_expression": "default",
-			"expressions": {
-				"default": "res://assets/characters/lia/lia.webp"
-			}
-		},
-		"irina": {
-			"name": "Irina",
-			"color": "#f28fbf",
-			"default_expression": "default",
-			"expressions": {
-				"default": "res://assets/characters/irina/irina.webp"
-			}
-		}
-	},
 	"nodes": {
 		"intro_01": {
 			"background": "res://assets/backgrounds/viaggio_auto.webp",

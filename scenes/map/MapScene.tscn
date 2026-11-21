@@ -101,7 +101,6 @@ anchor_bottom = 0.44
 offset_right = 0.0
 offset_bottom = 0.0
 location_id = "spiaggia"
-display_name = "Spiaggia"
 placeholder_color = Color(0.25, 0.48, 0.7, 0.94)
 
 [node name="Giardinetti" parent="MapAspect/MapFrame" instance=ExtResource("2_zone")]
@@ -113,7 +112,6 @@ anchor_bottom = 0.4
 offset_right = 0.0
 offset_bottom = 0.0
 location_id = "giardinetti"
-display_name = "Giardinetti"
 placeholder_color = Color(0.3, 0.5, 0.32, 0.94)
 
 [node name="GiardinoBotanico" parent="MapAspect/MapFrame" instance=ExtResource("2_zone")]
@@ -125,7 +123,6 @@ anchor_bottom = 0.78
 offset_right = 0.0
 offset_bottom = 0.0
 location_id = "giardino_botanico"
-display_name = "Giardino Botanico"
 placeholder_color = Color(0.2, 0.45, 0.38, 0.94)
 
 [node name="Loft" parent="MapAspect/MapFrame" instance=ExtResource("2_zone")]
@@ -137,7 +134,6 @@ anchor_bottom = 0.72
 offset_right = 0.0
 offset_bottom = 0.0
 location_id = "loft"
-display_name = "Loft"
 requires = {"flags": {"loft_aperto": true}}
 locked_hint = "Il loft è chiuso a chiave. Forse qualcuno in spiaggia ha la chiave."
 placeholder_color = Color(0.38, 0.3, 0.5, 0.94)
@@ -151,7 +147,6 @@ anchor_bottom = 0.4
 offset_right = 0.0
 offset_bottom = 0.0
 location_id = "viaggio_soverato"
-display_name = "Viaggio a Soverato"
 placeholder_color = Color(0.7, 0.4, 0.2, 0.94)
 
 [node name="SafeArea" type="MarginContainer" parent="."]

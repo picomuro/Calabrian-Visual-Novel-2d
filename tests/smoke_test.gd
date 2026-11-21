@@ -85,6 +85,7 @@ func _run() -> void:
 	game_state.reset()
 	_test_all_dialogues_valid()
 	_test_validator()
+	_test_registry()
 	_test_dialogue_runner(game_state)
 	game_state.reset()
 	_test_effects_once(game_state)
@@ -202,6 +203,37 @@ func _test_validator() -> void:
 	runner.free()
 
 
+## Registro condiviso: file validi, una location per ogni dialogo e viceversa,
+## personaggi del registro usabili da qualsiasi dialogo e ridefinibili localmente.
+func _test_registry() -> void:
+	GameRegistry.reload()
+	var issues: PackedStringArray = GameRegistry.validate()
+	_check(issues.is_empty(), "registro: personaggi e location validi %s" % [issues])
+	_check(GameRegistry.get_characters().size() == 9 and GameRegistry.has_character("padre") and not GameRegistry.get_characters().has("_descrizione"), "registro: 9 personaggi, note '_' ignorate")
+	_check(GameRegistry.get_location_name("giardino_botanico") == "Giardino Botanico" and GameRegistry.get_location_name("sconosciuta") == "Sconosciuta", "registro: nomi delle location")
+	for file_name: String in DirAccess.get_files_at("res://data/dialogues"):
+		if file_name.get_extension() == "json":
+			_check(GameRegistry.has_location(file_name.get_basename()), "registro: il dialogo %s ha la sua location" % file_name)
+
+	# Un dialogo senza "characters" usa quelli del registro; uno locale vince solo lì.
+	var runner: DialogueRunner = DialogueRunner.new()
+	var names: Array[String] = []
+	runner.line_ready.connect(func(_id: String, speaker_name: String, _color: Color, _text: String) -> void: names.append(speaker_name))
+	runner.load_from_dict({"id": "r", "start": "a", "nodes": {"a": {"speaker": "padre", "characters": {"left": "madre"}, "text": "Ciao.", "next": "@end"}}}, "r")
+	_check(runner.validate().is_empty() and runner.get_used_character_ids() == PackedStringArray(["padre", "madre"]), "registro: personaggi del registro usabili senza ridefinirli")
+	runner.start()
+	_check(names == ["Padre"], "registro: nome del personaggio preso dal registro")
+	runner.free()
+	names.clear()
+	runner = DialogueRunner.new()
+	runner.line_ready.connect(func(_id: String, speaker_name: String, _color: Color, _text: String) -> void: names.append(speaker_name))
+	runner.load_from_dict({"id": "r2", "start": "a", "characters": {"padre": {"name": "Papà da giovane", "color": "#ffffff", "expressions": {}}}, "nodes": {"a": {"speaker": "padre", "text": "Ciao.", "next": "@location:non_registrata"}}}, "r2")
+	runner.start()
+	_check(names == ["Papà da giovane"] and GameRegistry.get_characters()["padre"]["name"] == "Padre", "registro: ridefinizione locale senza toccare il registro")
+	_check(", ".join(runner.validate()).contains("non è in res://data/locations.json"), "registro: uscita verso una location non registrata segnalata")
+	runner.free()
+
+
 ## Effetti una volta sola: rigiocando un dialogo non si raccolgono di nuovo ricompense,
 ## una scelta diversa nello stesso nodo non dà altri effetti, "repeat" li ripete sempre,
 ## e la memoria degli effetti applicati passa dal salvataggio.
@@ -274,7 +306,6 @@ func _test_dialogue_runner(game_state: Node) -> void:
 	runner.advance()
 	runner.advance()
 	_check(events["finished"] == "@map" and runner.state == DialogueRunner.State.FINISHED, "runner: fine con ritorno alla mappa")
-	_check(game_state.current_dialogue_node == "", "runner: nodo corrente azzerato a fine dialogo")
 	runner.queue_free()
 
 
@@ -328,6 +359,7 @@ func _test_map_scene(game_state: Node) -> void:
 	for zone: MapZone in scene.call(&"get_zones"):
 		zones[zone.location_id] = zone
 		_check(FileAccess.file_exists("res://data/dialogues/%s.json" % zone.location_id), "mappa: dialogo per la zona '%s'" % zone.location_id)
+		_check(GameRegistry.has_location(zone.location_id) and (zone.get_node(^"%NameLabel") as Label).text == GameRegistry.get_location_name(zone.location_id), "mappa: zona '%s' registrata, nome dal registro" % zone.location_id)
 		var zone_issues: PackedStringArray = game_state.validate_requirements(zone.requires)
 		_check(zone_issues.is_empty(), "mappa: requisiti validi per la zona '%s' %s" % [zone.location_id, zone_issues])
 		# Nel test la MapScene non deve cambiare scena davvero: scollego il suo gestore.

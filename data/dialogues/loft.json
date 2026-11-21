@@ -1,18 +1,6 @@
 {
 	"id": "loft",
 	"start": "inizio",
-	"characters": {
-		"spirito": {
-			"name": "Spirito inquieto",
-			"color": "#8a72c8",
-			"default_expression": "triste",
-			"expressions": {
-				"triste": "res://assets/characters/spirito/spirito.webp",
-				"sereno": "res://assets/characters/spirito/spirito.webp",
-				"furioso": "res://assets/characters/spirito/spirito.webp"
-			}
-		}
-	},
 	"nodes": {
 		"inizio": {
 			"background": {"image": "res://assets/backgrounds/loft.png", "color": "#1a1a24"},

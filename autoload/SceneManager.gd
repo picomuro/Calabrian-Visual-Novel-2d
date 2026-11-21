@@ -30,7 +30,6 @@ signal navigation_failed(target: String, reason: String)
 
 const MAP_SCENE_PATH: String = "res://scenes/map/MapScene.tscn"
 const DIALOGUE_SCENE_PATH: String = "res://scenes/dialogue/DialogueScene.tscn"
-const DIALOGUES_DIR: String = "res://data/dialogues/"
 const CONFIRM_OVERLAY_PATH: String = "res://scenes/ui/ConfirmOverlay.tscn"
 
 const FADE_DURATION: float = 0.35
@@ -156,7 +155,7 @@ func is_on_map() -> bool:
 
 ## Convenzione: un file JSON per location, con lo stesso nome dell'id.
 static func get_dialogue_path(location_id: String) -> String:
-	return DIALOGUES_DIR.path_join(location_id + ".json")
+	return GameRegistry.get_dialogue_path(location_id)
 
 
 ## Memorizza una navigazione arrivata durante una transizione (vince l'ultima).

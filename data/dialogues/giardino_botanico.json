@@ -1,7 +1,6 @@
 {
 	"id": "giardino_botanico",
 	"start": "inizio",
-	"characters": {},
 	"nodes": {
 		"inizio": {
 			"background": {"image": "res://assets/backgrounds/giardino_botanico.png", "color": "#2f5a45"},

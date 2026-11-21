@@ -1,0 +1,84 @@
+{
+	"_descrizione": "Personaggi condivisi da tutti i dialoghi. Un dialogo può ridefinire o aggiungere personaggi nel suo campo \"characters\". Ritratto di base: espressione \"default\" o quella indicata in default_expression.",
+	"characters": {
+		"tu": {
+			"name": "Tu",
+			"color": "#f2c759",
+			"default_expression": "default",
+			"expressions": {
+				"default": "res://assets/characters/spirito/spirito.webp"
+			}
+		},
+		"padre": {
+			"name": "Padre",
+			"color": "#7aa84d",
+			"default_expression": "default",
+			"expressions": {
+				"default": "res://assets/characters/padre/padre.webp"
+			}
+		},
+		"madre": {
+			"name": "Madre",
+			"color": "#d97a8c",
+			"default_expression": "default",
+			"expressions": {
+				"default": "res://assets/characters/lia/lia.webp"
+			}
+		},
+		"irina": {
+			"name": "Irina",
+			"color": "#f28fbf",
+			"default_expression": "default",
+			"expressions": {
+				"default": "res://assets/characters/irina/irina.webp"
+			}
+		},
+		"spirito": {
+			"name": "Spirito inquieto",
+			"color": "#8a72c8",
+			"default_expression": "triste",
+			"expressions": {
+				"triste": "res://assets/characters/spirito/spirito.webp",
+				"sereno": "res://assets/characters/spirito/spirito.webp",
+				"furioso": "res://assets/characters/spirito/spirito.webp"
+			}
+		},
+		"lia": {
+			"name": "Lia la mercante",
+			"color": "#4f8f55",
+			"default_expression": "allegra",
+			"expressions": {
+				"allegra": "res://assets/characters/lia/lia.webp",
+				"sospettosa": "res://assets/characters/lia/lia.webp"
+			}
+		},
+		"capitano": {
+			"name": "Capitano Arno",
+			"color": "#8a3b3b",
+			"default_expression": "serio",
+			"expressions": {
+				"serio": "res://assets/characters/capitano/serio.png",
+				"divertito": "res://assets/characters/capitano/divertito.png"
+			}
+		},
+		"oste": {
+			"name": "Bruno l'oste",
+			"color": "#b5803a",
+			"default_expression": "neutro",
+			"expressions": {
+				"neutro": "res://assets/characters/oste/neutro.png",
+				"sorridente": "res://assets/characters/oste/sorridente.png",
+				"arrabbiato": "res://assets/characters/oste/arrabbiato.png"
+			}
+		},
+		"mirta": {
+			"name": "Mirta",
+			"color": "#6a8fbf",
+			"default_expression": "preoccupata",
+			"expressions": {
+				"preoccupata": "res://assets/characters/mirta/preoccupata.png",
+				"sollevata": "res://assets/characters/mirta/sollevata.png"
+			}
+		}
+	}
+}

@@ -1,27 +1,6 @@
 {
 	"id": "spiaggia",
 	"start": "inizio",
-	"characters": {
-		"oste": {
-			"name": "Bruno l'oste",
-			"color": "#b5803a",
-			"default_expression": "neutro",
-			"expressions": {
-				"neutro": "res://assets/characters/oste/neutro.png",
-				"sorridente": "res://assets/characters/oste/sorridente.png",
-				"arrabbiato": "res://assets/characters/oste/arrabbiato.png"
-			}
-		},
-		"mirta": {
-			"name": "Mirta",
-			"color": "#6a8fbf",
-			"default_expression": "preoccupata",
-			"expressions": {
-				"preoccupata": "res://assets/characters/mirta/preoccupata.png",
-				"sollevata": "res://assets/characters/mirta/sollevata.png"
-			}
-		}
-	},
 	"nodes": {
 		"inizio": {
 			"background": {"image": "res://assets/backgrounds/spiaggia.webp", "color": "#4a7fb5"},

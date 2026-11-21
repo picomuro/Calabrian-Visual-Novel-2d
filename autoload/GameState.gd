@@ -90,8 +90,6 @@ var _applied_effects: Dictionary[String, bool] = {}
 
 ## Location corrente ("" quando si è sulla mappa).
 var current_location_id: String = ""
-## Nodo di dialogo corrente ("" se non si è in un dialogo); serve a riprendere da un salvataggio.
-var current_dialogue_node: String = ""
 
 #endregion
 
@@ -116,7 +114,6 @@ func _reset_values() -> void:
 	_flags.clear()
 	_applied_effects.clear()
 	current_location_id = ""
-	current_dialogue_node = ""
 
 
 #region Karma
@@ -277,7 +274,6 @@ func get_all_flags() -> Dictionary[String, bool]:
 #region Posizione
 
 func set_current_location(location_id: String) -> void:
-	current_dialogue_node = ""
 	if location_id == current_location_id:
 		return
 	current_location_id = location_id
@@ -564,7 +560,6 @@ func to_dict() -> Dictionary:
 		"flags": _flags.duplicate(),
 		"applied_effects": _applied_effects.keys(),
 		"location_id": current_location_id,
-		"dialogue_node": current_dialogue_node,
 	}
 
 
@@ -634,7 +629,6 @@ func from_dict(source: Dictionary) -> bool:
 			_applied_effects[str(key)] = true
 
 	current_location_id = str(data.get("location_id", ""))
-	current_dialogue_node = str(data.get("dialogue_node", ""))
 
 	state_replaced.emit()
 	state_changed.emit()

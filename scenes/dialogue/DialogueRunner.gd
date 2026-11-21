@@ -11,6 +11,8 @@ extends Node
 ## {
 ##   "id": "spiaggia",
 ##   "start": "inizio",
+##   # facoltativo: i personaggi stanno in data/characters.json (GameRegistry);
+##   # qui solo quelli da aggiungere o ridefinire per questo dialogo
 ##   "characters": { "oste": { "name": "...", "color": "#b5803a",
 ##                             "default_expression": "neutro",
 ##                             "expressions": { "neutro": "res://...png" } } },
@@ -67,7 +69,10 @@ var state: State = State.IDLE
 
 var _start_node: String = ""
 var _nodes: Dictionary = {}
+## Personaggi usabili: registro condiviso + definizioni del dialogo.
 var _characters: Dictionary = {}
+## Solo i personaggi definiti nel file del dialogo (quelli del registro li controlla GameRegistry).
+var _local_characters: Dictionary = {}
 var _current_id: String = ""
 var _current_node: Dictionary = {}
 
@@ -97,8 +102,11 @@ func load_from_dict(data: Dictionary, fallback_id: String = "") -> bool:
 		push_error("DialogueRunner: il dialogo '%s' non ha 'nodes'." % fallback_id)
 		return false
 	_nodes = nodes
-	var characters: Variant = data.get("characters", {})
-	_characters = characters if characters is Dictionary else {}
+	# Personaggi: quelli condivisi del registro, più (o al posto di) quelli del dialogo.
+	var local_characters: Variant = data.get("characters", {})
+	_local_characters = local_characters if local_characters is Dictionary else {}
+	_characters = GameRegistry.get_characters().duplicate()
+	_characters.merge(_local_characters, true)
 	dialogue_id = str(data.get("id", fallback_id))
 	_start_node = str(data.get("start", ""))
 	if _start_node.is_empty():
@@ -168,7 +176,6 @@ func _enter_node(node_id: String) -> void:
 
 		_current_id = next_id
 		_current_node = _nodes[next_id]
-		GameState.current_dialogue_node = next_id
 		node_entered.emit(next_id)
 		_apply_effects(_current_node, next_id)
 		_apply_presentation(_current_node)
@@ -211,7 +218,6 @@ func get_effects_key(key_suffix: String) -> String:
 
 func _finish(exit_target: String) -> void:
 	state = State.FINISHED
-	GameState.current_dialogue_node = ""
 	dialogue_finished.emit(exit_target)
 
 
@@ -366,17 +372,30 @@ func validate() -> PackedStringArray:
 
 
 ## Personaggi: espressione di default esistente e file dei ritratti presenti.
+## (Solo quelli definiti nel dialogo: il registro condiviso lo controlla GameRegistry.validate().)
 func _validate_character_definitions(issues: PackedStringArray) -> void:
-	for character_key: Variant in _characters:
-		var character_id: String = str(character_key)
-		var definition: Variant = _characters[character_key]
-		if not definition is Dictionary:
-			issues.append("la definizione del personaggio '%s' non è un oggetto" % character_id)
+	for character_key: Variant in _local_characters:
+		for issue: String in GameRegistry.validate_character(str(character_key), _local_characters[character_key]):
+			issues.append(issue)
+
+
+## Id dei personaggi che il dialogo usa davvero: in scena negli slot o come "speaker".
+func get_used_character_ids() -> PackedStringArray:
+	var used: PackedStringArray = []
+	for node_key: Variant in _nodes:
+		var node: Variant = _nodes[node_key]
+		if not node is Dictionary:
 			continue
-		var expressions: Dictionary = _get_dict(definition, "expressions")
-		var default_expression: String = str(definition.get("default_expression", ""))
-		if not default_expression.is_empty() and not expressions.has(default_expression):
-			issues.append("espressione di default '%s' non definita per '%s'" % [default_expression, character_id])
+		var speaker: String = str(node.get("speaker", ""))
+		if _characters.has(speaker) and not speaker in used:
+			used.append(speaker)
+		var slots: Dictionary = _get_dict(node, "characters")
+		for slot: Variant in slots:
+			var entry: Variant = slots[slot]
+			var character_id: String = str(entry.get("id", "")) if entry is Dictionary else (str(entry) if entry != null else "")
+			if _characters.has(character_id) and not character_id in used:
+				used.append(character_id)
+	return used
 
 
 ## Immagini (ritratti e sfondi) citate dal dialogo ma non ancora presenti nel progetto.
@@ -384,8 +403,8 @@ func _validate_character_definitions(issues: PackedStringArray) -> void:
 ## nome del personaggio, o il colore di sfondo). Serve come elenco delle immagini da fornire.
 func find_missing_assets() -> PackedStringArray:
 	var missing: PackedStringArray = []
-	for character_key: Variant in _characters:
-		var expressions: Dictionary = _get_dict(_get_dict(_characters, str(character_key)), "expressions")
+	for character_id: String in get_used_character_ids():
+		var expressions: Dictionary = _get_dict(_get_dict(_characters, character_id), "expressions")
 		for expression: Variant in expressions:
 			_append_if_missing(missing, str(expressions[expression]))
 	for node_key: Variant in _nodes:
@@ -438,9 +457,11 @@ func _check_target(issues: PackedStringArray, from_id: String, target: String) -
 		return
 	if target.begins_with(EXIT_LOCATION_PREFIX):
 		var location_id: String = target.trim_prefix(EXIT_LOCATION_PREFIX)
-		var dialogue_path: String = SceneManager.get_dialogue_path(location_id)
+		var dialogue_path: String = GameRegistry.get_dialogue_path(location_id)
 		if location_id.is_empty():
 			issues.append("'%s' senza id di location (nodo '%s')" % [target, from_id])
+		elif not GameRegistry.has_location(location_id):
+			issues.append("il nodo '%s' porta alla location '%s', che non è in %s" % [from_id, location_id, GameRegistry.LOCATIONS_PATH])
 		elif not FileAccess.file_exists(dialogue_path):
 			issues.append("il nodo '%s' porta alla location '%s', che non ha un dialogo (%s)" % [from_id, location_id, dialogue_path])
 		return

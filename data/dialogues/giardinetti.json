@@ -1,26 +1,6 @@
 {
 	"id": "giardinetti",
 	"start": "inizio",
-	"characters": {
-		"capitano": {
-			"name": "Capitano Arno",
-			"color": "#8a3b3b",
-			"default_expression": "serio",
-			"expressions": {
-				"serio": "res://assets/characters/capitano/serio.png",
-				"divertito": "res://assets/characters/capitano/divertito.png"
-			}
-		},
-		"lia": {
-			"name": "Lia la mercante",
-			"color": "#4f8f55",
-			"default_expression": "allegra",
-			"expressions": {
-				"allegra": "res://assets/characters/lia/lia.webp",
-				"sospettosa": "res://assets/characters/lia/lia.webp"
-			}
-		}
-	},
 	"nodes": {
 		"inizio": {
 			"background": {"image": "res://assets/backgrounds/giardinetti.png", "color": "#4a5a3a"},

@@ -1,0 +1,20 @@
+{
+	"_descrizione": "Location del gioco. Per ognuna deve esistere data/dialogues/<id>.json; la zona sulla mappa (MapZone) usa il nome da qui se non ne ha uno suo.",
+	"locations": {
+		"spiaggia": {
+			"name": "Spiaggia"
+		},
+		"giardinetti": {
+			"name": "Giardinetti"
+		},
+		"giardino_botanico": {
+			"name": "Giardino Botanico"
+		},
+		"loft": {
+			"name": "Loft"
+		},
+		"viaggio_soverato": {
+			"name": "Viaggio a Soverato"
+		}
+	}
+}

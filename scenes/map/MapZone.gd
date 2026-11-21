@@ -22,7 +22,7 @@ const PRESS_SCALE: Vector2 = Vector2(0.95, 0.95)
 
 ## Id della location: il dialogo caricato sarà res://data/dialogues/<location_id>.json.
 @export var location_id: String = ""
-## Nome mostrato sul segnaposto (vuoto = location_id).
+## Nome mostrato sulla zona (vuoto = il nome in data/locations.json).
 @export var display_name: String = ""
 ## Requisiti per accedere, stesso formato dei dialoghi (es. {"flags": {"loft_aperto": true}}).
 @export var requires: Dictionary = {}
@@ -40,7 +40,7 @@ var is_unlocked: bool = true
 
 
 func _ready() -> void:
-	_name_label.text = display_name if not display_name.is_empty() else location_id.capitalize()
+	_name_label.text = display_name if not display_name.is_empty() else GameRegistry.get_location_name(location_id)
 	# Copia dello stile per poter colorare ogni zona in modo diverso.
 	var style: StyleBoxFlat = _placeholder.get_theme_stylebox(&"panel").duplicate() as StyleBoxFlat
 	if style != null:
