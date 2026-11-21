@@ -318,7 +318,7 @@ func apply_effects(effects: Dictionary) -> void:
 			"flags":
 				if value is Dictionary:
 					for flag_id: Variant in value:
-						set_flag(str(flag_id), value[flag_id] == true)
+						set_flag(str(flag_id), is_true(value[flag_id]))
 				elif value is Array:
 					for flag_id: Variant in value:
 						set_flag(str(flag_id), true)
@@ -375,7 +375,7 @@ func meets_requirements(requirements: Dictionary) -> bool:
 			"flags":
 				if value is Dictionary:
 					for flag_id: Variant in value:
-						if has_flag(str(flag_id)) != (value[flag_id] == true):
+						if has_flag(str(flag_id)) != is_true(value[flag_id]):
 							return false
 				elif value is Array:
 					for flag_id: Variant in value:
@@ -620,7 +620,7 @@ func from_dict(source: Dictionary) -> bool:
 	var raw_flags: Variant = data.get("flags", {})
 	if raw_flags is Dictionary:
 		for flag_id: Variant in raw_flags:
-			if raw_flags[flag_id] == true:
+			if is_true(raw_flags[flag_id]):
 				_flags[str(flag_id)] = true
 
 	var raw_applied: Variant = data.get("applied_effects", [])
@@ -633,6 +633,12 @@ func from_dict(source: Dictionary) -> bool:
 	state_replaced.emit()
 	state_changed.emit()
 	return true
+
+
+## True solo per il booleano true. Da usare con i valori letti da JSON al posto di
+## "valore == true": in GDScript confrontare una stringa con un bool è un errore.
+static func is_true(value: Variant) -> bool:
+	return value is bool and value
 
 
 ## Conversione difensiva Variant -> int (i valori JSON possono essere float o tipi errati).

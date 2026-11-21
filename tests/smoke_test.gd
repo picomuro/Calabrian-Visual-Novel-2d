@@ -81,6 +81,8 @@ func _run() -> void:
 	_check(not scene_manager.has_open_overlay(), "nessun overlay aperto")
 
 	game_state.reset()
+	_test_game_state_limits(game_state)
+	game_state.reset()
 	_test_effects_and_requirements(game_state)
 	game_state.reset()
 	_test_all_dialogues_valid()
@@ -90,6 +92,10 @@ func _run() -> void:
 	game_state.reset()
 	_test_effects_once(game_state)
 	game_state.reset()
+	_test_runner_edge_cases(game_state)
+	game_state.reset()
+	_test_dialogue_playthroughs(game_state)
+	game_state.reset()
 	await _test_dialogue_scene(game_state)
 	game_state.reset()
 	await _test_map_scene(game_state)
@@ -97,6 +103,8 @@ func _run() -> void:
 	await _test_save_slots_and_menu(game_state, save_manager)
 	game_state.reset()
 	await _test_save_robustness(game_state, save_manager)
+	game_state.reset()
+	await _test_overlay_stack()
 	game_state.reset()
 	await _test_navigation(game_state)
 	game_state.reset()
@@ -148,7 +156,8 @@ func _test_validator() -> void:
 			"a": {"background": "#202020", "characters": {"left": {"id": "lia", "expression": "default"}, "right": "lia", "center": null},
 				"effects": {"karma": 2, "stats": {"forza": 1}, "items": {"moneta": 1}, "flags": ["visto"]}, "text": "Ciao.", "next": "b"},
 			"b": {"background": {"image": "res://assets/backgrounds/spiaggia.webp", "color": "black"}, "text": "Scegli.",
-				"choices": [{"text": "Vai", "next": "@location:spiaggia", "requires": {"karma": {"min": 1, "axis": "main"}, "karma_tier": ["neutro", "buono"], "items": ["moneta"], "flags": {"visto": true}}}],
+				"choices": [{"text": "Vai", "next": "@location:spiaggia", "requires": {"karma": {"min": 1, "axis": "main"}, "karma_tier": ["neutro", "buono"], "items": ["moneta"], "flags": {"visto": true}}},
+					{"text": "Resta", "next": "@end"}],
 				"branches": [{"requires": {"stats": {"forza": 2}}, "next": "@map"}]},
 		},
 	}
@@ -189,6 +198,8 @@ func _test_validator() -> void:
 		"requisito sconosciuto 'livello'": "requisito sconosciuto",
 		"'stats.forza' deve essere un numero": "valore non numerico",
 		"branch del nodo 'b': oggetto 'spada'": "requisiti dei branch controllati",
+		"nel nodo 'b' ogni scelta ha requisiti": "scelte tutte bloccabili (rischio di blocco)",
+		"il nodo 'b' è irraggiungibile": "nodo irraggiungibile",
 	}
 	for fragment: String in expected:
 		var found: bool = false
@@ -232,6 +243,117 @@ func _test_registry() -> void:
 	_check(names == ["Papà da giovane"] and GameRegistry.get_characters()["padre"]["name"] == "Padre", "registro: ridefinizione locale senza toccare il registro")
 	_check(", ".join(runner.validate()).contains("non è in res://data/locations.json"), "registro: uscita verso una location non registrata segnalata")
 	runner.free()
+
+
+## GameState ai limiti: soglie delle fasce di karma, valori massimi e minimi,
+## oggetti che arrivano a zero, flag tolti, dati di salvataggio con tipi sbagliati.
+func _test_game_state_limits(game_state: Node) -> void:
+	_check(game_state.karma_tier_for(-10) == &"cattivo" and game_state.karma_tier_for(-9) == &"neutro" and game_state.karma_tier_for(9) == &"neutro" and game_state.karma_tier_for(10) == &"buono", "limiti: soglie delle fasce di karma (-10 e +10)")
+	game_state.add_karma(500)
+	_check(game_state.get_karma() == game_state.KARMA_MAX, "limiti: karma limitato al massimo")
+	game_state.add_stat("forza", 500)
+	game_state.add_stat("carisma", -500)
+	_check(game_state.get_stat("forza") == game_state.STAT_MAX and game_state.get_stat("carisma") == game_state.STAT_MIN, "limiti: statistiche tra minimo e massimo")
+	game_state.add_item("moneta", 5000)
+	_check(game_state.get_item_quantity("moneta") == game_state.MAX_ITEM_QUANTITY, "limiti: quantità massima di un oggetto")
+	game_state.add_item("chiave_antica")
+	_check(game_state.remove_item("chiave_antica") and not game_state.get_inventory().has("chiave_antica"), "limiti: un oggetto arrivato a zero sparisce dall'inventario")
+	game_state.set_flag("temporaneo")
+	game_state.clear_flag("temporaneo")
+	_check(not game_state.has_flag("temporaneo") and not game_state.get_all_flags().has("temporaneo"), "limiti: un flag tolto non resta salvato")
+
+	var garbage: Dictionary = {"version": 2, "karma": "tanto", "stats": ["forza"], "inventory": {"moneta": -4, "medaglione": 2.6}, "flags": {"a": "si", "b": true}, "applied_effects": "nessuno"}
+	_check(game_state.from_dict(garbage), "limiti: un salvataggio con tipi sbagliati si carica lo stesso")
+	_check(game_state.get_karma() == 0 and game_state.get_stat("forza") == 1 and game_state.get_item_quantity("moneta") == 0 and game_state.get_item_quantity("medaglione") == 3, "limiti: valori non validi ignorati, numeri convertiti")
+	_check(game_state.has_flag("b") and not game_state.has_flag("a"), "limiti: solo i flag a true vengono caricati")
+	game_state.apply_effects({"flags": {"testo_al_posto_di_bool": "si"}})
+	_check(not game_state.has_flag("testo_al_posto_di_bool") and not game_state.meets_requirements({"flags": {"b": "si"}}), "limiti: flag non booleani in effetti e requisiti non mandano in errore")
+
+
+## DialogueRunner nei casi limite: ciclo di nodi senza testo, comandi nel momento sbagliato,
+## branch senza requisiti soddisfatti. (Il ciclo stampa un ERROR: è voluto.)
+func _test_runner_edge_cases(game_state: Node) -> void:
+	var runner: DialogueRunner = DialogueRunner.new()
+	var finished: Array[String] = []
+	runner.dialogue_finished.connect(func(exit_target: String) -> void: finished.append(exit_target))
+	runner.load_from_dict({"id": "ciclo", "start": "a", "nodes": {"a": {"next": "b"}, "b": {"next": "a"}}}, "ciclo")
+	runner.start()
+	_check(finished == ["@end"] and runner.state == DialogueRunner.State.FINISHED, "runner: un ciclo di nodi senza testo termina invece di bloccarsi")
+	runner.free()
+
+	runner = DialogueRunner.new()
+	runner.load_from_dict({"id": "limiti", "start": "a", "nodes": {
+		"a": {"text": "Scegli.", "choices": [{"text": "Uno", "next": "b"}]},
+		"b": {"branches": [{"requires": {"flags": {"mai": true}}, "next": "@map"}], "next": "c"},
+		"c": {"text": "Fine.", "next": "@end"},
+	}}, "limiti")
+	runner.start()
+	runner.advance()
+	_check(runner.get_current_node_id() == "a" and runner.state == DialogueRunner.State.WAITING_CHOICE, "runner: advance ignorato mentre si attende una scelta")
+	runner.choose(7)
+	_check(runner.get_current_node_id() == "a", "runner: indice di scelta non valido ignorato")
+	runner.choose(0)
+	_check(runner.get_current_node_id() == "c", "runner: nessun branch valido, si segue next")
+	runner.choose(0)
+	_check(runner.get_current_node_id() == "c" and runner.state == DialogueRunner.State.WAITING_ADVANCE, "runner: choose ignorato quando non ci sono scelte")
+	runner.free()
+
+
+## Ogni dialogo vero giocato molte volte scegliendo a caso tra le scelte disponibili,
+## con lo stato di una partita nuova: deve sempre arrivare alla fine, senza restare
+## mai senza scelte disponibili. (Seme fisso: l'esito è sempre lo stesso.)
+func _test_dialogue_playthroughs(game_state: Node) -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261121
+	for file_name: String in DirAccess.get_files_at("res://data/dialogues"):
+		if file_name.get_extension() != "json":
+			continue
+		var stuck: Array[String] = []
+		var endings: Dictionary = {}
+		var runs: int = 40
+		for run: int in runs:
+			game_state.reset()
+			var runner: DialogueRunner = DialogueRunner.new()
+			var offered: Array = []
+			var exits: Array[String] = []
+			runner.choices_ready.connect(func(choices: Array[Dictionary]) -> void: offered.assign(choices))
+			runner.dialogue_finished.connect(func(exit_target: String) -> void: exits.append(exit_target))
+			runner.load_dialogue("res://data/dialogues/".path_join(file_name))
+			runner.start()
+			for step: int in 300:
+				if runner.state == DialogueRunner.State.FINISHED:
+					break
+				if runner.state == DialogueRunner.State.WAITING_ADVANCE:
+					runner.advance()
+					continue
+				var available: Array = offered.filter(func(choice: Dictionary) -> bool: return choice["available"])
+				if available.is_empty():
+					stuck.append(runner.get_current_node_id())
+					break
+				runner.choose(int(available[rng.randi_range(0, available.size() - 1)]["index"]))
+			if runner.state == DialogueRunner.State.FINISHED and exits.size() == 1:
+				endings[exits[0]] = true
+			elif stuck.is_empty():
+				stuck.append("(non finito: %s)" % runner.get_current_node_id())
+			runner.free()
+		_check(stuck.is_empty(), "partite simulate: %s finisce sempre (%d volte, uscite %s) %s" % [file_name, runs, endings.keys(), stuck])
+	game_state.reset()
+
+
+## Overlay sovrapposti: menu e conferma insieme, la pausa resta finché c'è un overlay
+## che la chiede; il tasto indietro chiude prima quello in cima; nessun doppione.
+func _test_overlay_stack() -> void:
+	var sm: Node = get_tree().root.get_node(^"/root/SceneManager")
+	var menu_path: String = "res://scenes/ui/GameMenuOverlay.tscn"
+	var menu: Node = sm.open_overlay(menu_path, {}, true)
+	_check(sm.open_overlay(menu_path, {}, true) == menu, "overlay: aprire due volte lo stesso overlay restituisce lo stesso")
+	var confirm: Node = sm.ask_confirmation("Sicuro?", "Sì", "No", func() -> void: pass)
+	_check(confirm != null and get_tree().paused, "overlay: conferma sopra il menu, gioco in pausa")
+	sm.call(&"_handle_back")
+	_check(sm.get_overlay(sm.CONFIRM_OVERLAY_PATH) == null and sm.get_overlay(menu_path) == menu and get_tree().paused, "overlay: indietro chiude solo la conferma, la pausa resta per il menu")
+	sm.call(&"_handle_back")
+	_check(not sm.has_open_overlay() and not get_tree().paused, "overlay: indietro di nuovo chiude il menu e toglie la pausa")
+	await get_tree().process_frame
 
 
 ## Effetti una volta sola: rigiocando un dialogo non si raccolgono di nuovo ricompense,
@@ -324,6 +446,8 @@ func _test_dialogue_scene(game_state: Node) -> void:
 	var center_slot: CharacterSlot = scene.get_node(^"%CenterSlot")
 	_check(not text_label.text.is_empty(), "scena: prima battuta mostrata")
 	_check(center_slot.character_id == "oste", "scena: oste al centro")
+	var background: TextureRect = scene.get_node(^"%BackgroundTexture")
+	_check(background.visible and background.texture != null, "scena: immagine di sfondo della spiaggia mostrata")
 	scene.call(&"_on_tap")  # completa la scrittura
 	_check(is_equal_approx(text_label.visible_ratio, 1.0), "scena: tocco completa il testo")
 	scene.call(&"_on_tap")  # avanza
@@ -584,7 +708,17 @@ func _test_navigation(game_state: Node) -> void:
 		confirm.emit_signal(&"confirmed")
 	_check(await _wait_for_scene(sm, sm.MAP_SCENE_PATH) and not get_tree().paused, "conferma: ritorno alla mappa senza pausa residua")
 
-	# 7. Ritorno sulla mappa = salvataggio automatico (slot "auto").
+	# 7. Uscita "@location:<id>": si passa direttamente al dialogo di quella location.
+	var onward: String = _write_temp_dialogue("verso_giardino", {"id": "t", "start": "a", "nodes": {"a": {"next": "@location:giardino_botanico"}}})
+	game_state.set_current_location("spiaggia")
+	sm.change_scene(sm.DIALOGUE_SCENE_PATH, {"dialogue_path": onward})
+	await get_tree().create_timer(1.0).timeout
+	_check(await _wait_for_scene(sm, sm.DIALOGUE_SCENE_PATH) and game_state.current_location_id == "giardino_botanico", "navigazione: @location porta al dialogo della location")
+	DirAccess.remove_absolute(onward)
+	sm.go_to_map()
+	await _wait_for_scene(sm, sm.MAP_SCENE_PATH)
+
+	# 8. Ritorno sulla mappa = salvataggio automatico (slot "auto").
 	var save_manager: Node = get_tree().root.get_node(^"/root/SaveManager")
 	save_manager.delete_save(save_manager.SLOT_AUTO)
 	save_manager.autosave_enabled = true

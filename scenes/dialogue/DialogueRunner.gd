@@ -205,7 +205,7 @@ func _enter_node(node_id: String) -> void:
 ## [param key_suffix] è l'id del nodo (più "#scelta" per le scelte).
 func _apply_effects(source: Dictionary, key_suffix: String) -> void:
 	var effects: Dictionary = _get_dict(source, "effects")
-	if source.get("repeat", false) == true:
+	if GameState.is_true(source.get("repeat", false)):
 		GameState.apply_effects(effects)
 	else:
 		GameState.apply_effects_once(get_effects_key(key_suffix), effects)
@@ -234,7 +234,7 @@ func _resolve_next(node: Dictionary) -> String:
 func _apply_presentation(node: Dictionary) -> void:
 	if node.has("background"):
 		background_changed.emit(node["background"])
-	if node.get("clear_characters", false) == true:
+	if GameState.is_true(node.get("clear_characters", false)):
 		for slot: String in SLOTS:
 			character_hidden.emit(slot)
 	var characters: Dictionary = _get_dict(node, "characters")
@@ -271,7 +271,7 @@ func _build_choices(node: Dictionary) -> Array[Dictionary]:
 			continue
 		var requires: Dictionary = _get_dict(choice, "requires")
 		var available: bool = GameState.meets_requirements(requires)
-		if not available and choice.get("hidden_if_locked", false) == true:
+		if not available and GameState.is_true(choice.get("hidden_if_locked", false)):
 			continue
 		var reason: String = ""
 		if not available:
@@ -368,7 +368,45 @@ func validate() -> PackedStringArray:
 			var expressions: Dictionary = _get_dict(_get_dict(_characters, character_id), "expressions")
 			if not expression.is_empty() and not expressions.has(expression):
 				issues.append("espressione '%s' non definita per '%s' (nodo '%s')" % [expression, character_id, node_id])
+		# Se ogni scelta ha requisiti, il giocatore che non ne soddisfa nessuno resta bloccato.
+		if not raw_choices.is_empty():
+			var has_free_choice: bool = false
+			for choice: Variant in raw_choices:
+				if choice is Dictionary and _get_dict(choice, "requires").is_empty():
+					has_free_choice = true
+					break
+			if not has_free_choice:
+				issues.append("nel nodo '%s' ogni scelta ha requisiti: serve almeno una scelta sempre disponibile, o il giocatore può restare bloccato" % node_id)
+	for node_id: String in _find_unreachable_nodes():
+		issues.append("il nodo '%s' è irraggiungibile (nessun percorso dal nodo iniziale)" % node_id)
 	return issues
+
+
+## Nodi a cui non si arriva mai partendo dal nodo iniziale (seguendo next, branches e scelte).
+func _find_unreachable_nodes() -> PackedStringArray:
+	var reached: Dictionary = {}
+	var pending: Array[String] = [_start_node]
+	while not pending.is_empty():
+		var node_id: String = pending.pop_back()
+		if reached.has(node_id) or not _nodes.has(node_id) or not _nodes[node_id] is Dictionary:
+			continue
+		reached[node_id] = true
+		var node: Dictionary = _nodes[node_id]
+		if node.has("next"):
+			pending.append(str(node["next"]))
+		var branches: Variant = node.get("branches", [])
+		if branches is Array:
+			for branch: Variant in branches:
+				if branch is Dictionary and branch.has("next"):
+					pending.append(str(branch["next"]))
+		for choice: Variant in _get_raw_choices(node):
+			if choice is Dictionary and choice.has("next"):
+				pending.append(str(choice["next"]))
+	var unreachable: PackedStringArray = []
+	for node_key: Variant in _nodes:
+		if not reached.has(str(node_key)):
+			unreachable.append(str(node_key))
+	return unreachable
 
 
 ## Personaggi: espressione di default esistente e file dei ritratti presenti.
