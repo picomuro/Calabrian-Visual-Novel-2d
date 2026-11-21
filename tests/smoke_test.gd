@@ -87,11 +87,15 @@ func _run() -> void:
 	_test_validator()
 	_test_dialogue_runner(game_state)
 	game_state.reset()
+	_test_effects_once(game_state)
+	game_state.reset()
 	await _test_dialogue_scene(game_state)
 	game_state.reset()
 	await _test_map_scene(game_state)
 	game_state.reset()
 	await _test_save_slots_and_menu(game_state, save_manager)
+	game_state.reset()
+	await _test_save_robustness(game_state, save_manager)
 	game_state.reset()
 	await _test_navigation(game_state)
 	game_state.reset()
@@ -196,6 +200,48 @@ func _test_validator() -> void:
 	_check(missing.size() == 2 and missing.has("res://non/esiste.webp") and missing.has("res://non/esiste_sfondo.webp"), "validatore: elenca ritratti e sfondi mancanti come segnaposto %s" % [missing])
 	_check(not ", ".join(issues).contains("non/esiste"), "validatore: le immagini mancanti non sono errori")
 	runner.free()
+
+
+## Effetti una volta sola: rigiocando un dialogo non si raccolgono di nuovo ricompense,
+## una scelta diversa nello stesso nodo non dà altri effetti, "repeat" li ripete sempre,
+## e la memoria degli effetti applicati passa dal salvataggio.
+func _test_effects_once(game_state: Node) -> void:
+	var data: Dictionary = {
+		"id": "prova_once", "start": "dono",
+		"nodes": {
+			"dono": {"text": "Tieni.", "effects": {"items": {"moneta": 2}}, "next": "pozzo"},
+			"pozzo": {"text": "Un pozzo.", "repeat": true, "effects": {"stats": {"forza": 1}}, "next": "scelta"},
+			"scelta": {"text": "Allora?", "choices": [
+				{"text": "Grazie", "effects": {"karma": 5}, "next": "@end"},
+				{"text": "Dammene ancora", "effects": {"karma": -5, "items": {"moneta": 10}}, "next": "@end"},
+			]},
+		},
+	}
+	var forza_iniziale: int = game_state.get_stat("forza")
+	for round: int in 2:
+		var runner: DialogueRunner = DialogueRunner.new()
+		runner.load_from_dict(data, "prova_once")
+		_check(runner.validate().is_empty(), "una volta sola: dialogo di prova valido (giro %d)" % (round + 1))
+		runner.start()
+		runner.advance()
+		runner.advance()
+		runner.choose(round)  # primo giro "Grazie", secondo giro l'altra scelta
+		runner.free()
+	_check(game_state.get_item_quantity("moneta") == 2, "una volta sola: ricompensa del nodo data una volta (%d monete)" % game_state.get_item_quantity("moneta"))
+	_check(game_state.get_karma() == 5, "una volta sola: conta solo la prima scelta del nodo (karma %d)" % game_state.get_karma())
+	_check(game_state.get_stat("forza") == forza_iniziale + 2, "una volta sola: con repeat gli effetti si ripetono")
+	_check(game_state.has_applied_effects("prova_once/dono") and game_state.has_applied_effects("prova_once/scelta#scelta"), "una volta sola: chiavi dialogo/nodo registrate")
+
+	var saved: Dictionary = game_state.to_dict()
+	game_state.reset()
+	_check(not game_state.has_applied_effects("prova_once/dono"), "una volta sola: nuova partita azzera gli effetti applicati")
+	game_state.from_dict(JSON.parse_string(JSON.stringify(saved)))
+	_check(game_state.has_applied_effects("prova_once/dono"), "una volta sola: effetti applicati ripristinati dal salvataggio")
+	var old_save: Dictionary = saved.duplicate()
+	old_save.erase("applied_effects")
+	game_state.from_dict(old_save)
+	_check(not game_state.has_applied_effects("prova_once/dono") and game_state.get_item_quantity("moneta") == 2, "una volta sola: salvataggio senza il campo ancora caricabile")
+	_check(not game_state.apply_effects_once("vuoto", {}) and not game_state.has_applied_effects("vuoto"), "una volta sola: un blocco vuoto non viene registrato")
 
 
 ## Percorre il dialogo della spiaggia scegliendo la strada "gentile" e controlla gli effetti.
@@ -372,6 +418,86 @@ func _test_save_slots_and_menu(game_state: Node, save_manager: Node) -> void:
 	save_manager.delete_save(manual)
 	map.queue_free()
 	await get_tree().process_frame
+
+
+## Salvataggi robusti: conversione dei formati vecchi, rifiuto delle versioni più recenti,
+## copia di sicurezza .bak, file illeggibili conservati e avviso sulla mappa.
+## (Produce due righe ERROR "caricamento fallito" e alcuni WARNING: sono voluti.)
+func _test_save_robustness(game_state: Node, save_manager: Node) -> void:
+	var path: String = save_manager.get_slot_path(save_manager.SLOT_AUTO)
+	var backup: String = path + save_manager.BACKUP_SUFFIX
+	var unreadable: String = path + save_manager.UNREADABLE_SUFFIX
+
+	# Versioni e conversione.
+	var old_data: Dictionary = {"version": 1, "karma": {"main": 3}, "flags": {"vecchio": true}}
+	var migrated: Dictionary = game_state.migrate_save_data(old_data)
+	_check(migrated.get("version") == game_state.SAVE_FORMAT_VERSION and migrated.get("applied_effects") == [] and not old_data.has("applied_effects"), "salvataggi: conversione dalla versione 1 (senza toccare l'originale)")
+	_check(game_state.get_save_version({}) == 1, "salvataggi: senza 'version' vale come versione 1")
+	_check(game_state.from_dict(old_data) and game_state.get_karma() == 3 and game_state.has_flag("vecchio"), "salvataggi: un salvataggio della versione 1 si carica")
+	_check(not game_state.from_dict({"version": 99, "karma": {"main": 50}}) and game_state.get_karma() == 3, "salvataggi: versione più recente rifiutata, stato invariato")
+
+	# Copia di sicurezza: il secondo salvataggio conserva il primo in .bak.
+	save_manager.delete_save()
+	DirAccess.remove_absolute(unreadable)
+	game_state.reset()
+	game_state.add_karma(1)
+	save_manager.save_game()
+	_check(not FileAccess.file_exists(backup), "salvataggi: nessuna copia al primo salvataggio")
+	game_state.add_karma(1)
+	save_manager.save_game()
+	_check(FileAccess.file_exists(backup), "salvataggi: copia .bak creata al salvataggio successivo")
+
+	# File principale danneggiato: si carica la copia, il file rotto viene conservato.
+	_write_text(path, "{ rotto")
+	var loads: Array[bool] = []
+	var on_loaded: Callable = func(_p: String, from_backup: bool) -> void: loads.append(from_backup)
+	save_manager.game_loaded.connect(on_loaded)
+	game_state.reset()
+	_check(save_manager.load_game() and game_state.get_karma() == 1 and loads == [true], "salvataggi: file danneggiato, caricata la copia .bak")
+	_check(FileAccess.get_file_as_string(unreadable) == "{ rotto", "salvataggi: file danneggiato conservato in .illeggibile")
+	_check(save_manager.peek_save_info().has("saved_at"), "salvataggi: peek usa la copia se il file è danneggiato")
+	save_manager.game_loaded.disconnect(on_loaded)
+
+	# Salvare sopra un file danneggiato non rovina la copia buona.
+	game_state.add_karma(5)
+	save_manager.save_game()
+	_write_text(path, "{ rotto di nuovo")
+	game_state.reset()
+	_check(save_manager.load_game() and game_state.get_karma() == 1, "salvataggi: la copia buona non viene sostituita da un file danneggiato")
+
+	# Tutto illeggibile: caricamento rifiutato, stato invariato.
+	_write_text(backup, "nemmeno questo")
+	game_state.set_flag("in_corso")
+	_check(not save_manager.load_game() and game_state.has_flag("in_corso"), "salvataggi: file e copia illeggibili, stato invariato")
+
+	# Salvataggio di una versione più recente del gioco: non caricato e conservato.
+	DirAccess.remove_absolute(backup)
+	_write_text(path, JSON.stringify({"version": 99, "karma": {"main": 50}}))
+	_check(not save_manager.load_game() and game_state.get_karma() == 1, "salvataggi: versione più recente non caricata")
+	_check(FileAccess.get_file_as_string(unreadable).contains("99"), "salvataggi: versione più recente conservata in .illeggibile")
+	_check(save_manager.peek_save_info().is_empty(), "salvataggi: il menu non propone un salvataggio non caricabile")
+
+	# Avviso sulla mappa e cancellazione completa.
+	save_manager.set(&"_startup_notice", save_manager.NOTICE_RESTORED)
+	var map: Control = (load("res://scenes/map/MapScene.tscn") as PackedScene).instantiate()
+	get_tree().root.add_child(map)
+	await get_tree().process_frame
+	_check((map.get_node(^"%ToastLabel") as Label).text == save_manager.NOTICE_RESTORED and save_manager.take_startup_notice().is_empty(), "salvataggi: avviso di ripresa mostrato una volta sulla mappa")
+	map.queue_free()
+	await get_tree().process_frame
+
+	game_state.add_karma(1)
+	save_manager.save_game()
+	save_manager.save_game()
+	save_manager.delete_save()
+	_check(not FileAccess.file_exists(path) and not FileAccess.file_exists(backup) and not save_manager.has_save(), "salvataggi: delete_save elimina anche la copia .bak")
+	DirAccess.remove_absolute(unreadable)
+
+
+func _write_text(path: String, text: String) -> void:
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
 
 
 ## Navigazione: richieste in coda, ripiego sulla mappa, errore con uscita, tasto indietro.

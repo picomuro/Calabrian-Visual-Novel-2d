@@ -21,9 +21,10 @@ extends Node
 ##       "clear_characters": false,
 ##       "speaker": "oste",          # id personaggio, nome libero, o assente = narratore
 ##       "text": "Testo con [b]BBCode[/b]",
-##       "effects": { ... },         # applicati all'ingresso nel nodo
+##       "effects": { ... },         # applicati all'ingresso nel nodo, una volta sola
+##       "repeat": false,            # true = effetti del nodo a ogni passaggio
 ##       "choices": [ {"text": "...", "next": "...", "effects": {...},
-##                     "requires": {...}, "hidden_if_locked": false} ],
+##                     "requires": {...}, "hidden_if_locked": false, "repeat": false} ],
 ##       "branches": [ {"requires": {...}, "next": "..."} ],  # primo che vale vince
 ##       "next": "altro_nodo" | "@end" | "@map" | "@location:<id>"
 ##     }
@@ -51,6 +52,8 @@ const SLOTS: Array[String] = ["left", "center", "right"]
 const EXIT_END: String = "@end"
 const EXIT_MAP: String = "@map"
 const EXIT_LOCATION_PREFIX: String = "@location:"
+## Suffisso della chiave degli effetti delle scelte (vedi _apply_effects).
+const CHOICE_EFFECTS_SUFFIX: String = "#scelta"
 ## Protezione da cicli infiniti tra nodi senza testo né scelte.
 const MAX_AUTO_STEPS: int = 64
 
@@ -139,7 +142,7 @@ func choose(choice_index: int) -> void:
 		push_warning("DialogueRunner: requisiti non soddisfatti per la scelta %d." % choice_index)
 		return
 	state = State.IDLE
-	GameState.apply_effects(_get_dict(choice, "effects"))
+	_apply_effects(choice, _current_id + CHOICE_EFFECTS_SUFFIX)
 	var next_id: String = str(choice["next"]) if choice.has("next") else _resolve_next(_current_node)
 	_enter_node(next_id)
 
@@ -167,7 +170,7 @@ func _enter_node(node_id: String) -> void:
 		_current_node = _nodes[next_id]
 		GameState.current_dialogue_node = next_id
 		node_entered.emit(next_id)
-		GameState.apply_effects(_get_dict(_current_node, "effects"))
+		_apply_effects(_current_node, next_id)
 		_apply_presentation(_current_node)
 
 		var text: String = str(_current_node.get("text", ""))
@@ -186,6 +189,24 @@ func _enter_node(node_id: String) -> void:
 
 	push_error("DialogueRunner [%s]: troppi nodi consecutivi senza testo (ciclo?) da '%s'." % [dialogue_id, node_id])
 	_finish(EXIT_END)
+
+
+## Applica gli effetti di un nodo o di una scelta. Di norma valgono una volta sola per
+## partita: rigiocando il dialogo non si raccolgono di nuovo ricompense e karma. Per le
+## scelte conta la prima decisione presa in quel nodo: sceglierne un'altra in seguito non
+## dà altri effetti. Con "repeat": true gli effetti si applicano a ogni passaggio.
+## [param key_suffix] è l'id del nodo (più "#scelta" per le scelte).
+func _apply_effects(source: Dictionary, key_suffix: String) -> void:
+	var effects: Dictionary = _get_dict(source, "effects")
+	if source.get("repeat", false) == true:
+		GameState.apply_effects(effects)
+	else:
+		GameState.apply_effects_once(get_effects_key(key_suffix), effects)
+
+
+## Chiave con cui GameState ricorda gli effetti già applicati (es. "spiaggia/inizio").
+func get_effects_key(key_suffix: String) -> String:
+	return "%s/%s" % [dialogue_id, key_suffix]
 
 
 func _finish(exit_target: String) -> void:
@@ -296,6 +317,8 @@ func validate() -> PackedStringArray:
 			_check_target(issues, node_id, str(node["next"]))
 		if node.has("effects"):
 			_append_prefixed(issues, GameState.validate_effects(node["effects"]), "nodo '%s'" % node_id)
+		if node.has("repeat") and not node["repeat"] is bool:
+			issues.append("'repeat' nel nodo '%s' deve valere true o false" % node_id)
 		if node.has("background"):
 			_check_background(issues, node_id, node["background"])
 		var branches: Variant = node.get("branches", [])
@@ -322,6 +345,8 @@ func validate() -> PackedStringArray:
 			var where: String = "scelta %d del nodo '%s'" % [index + 1, node_id]
 			_append_prefixed(issues, GameState.validate_effects(choice.get("effects", {})), where)
 			_append_prefixed(issues, GameState.validate_requirements(choice.get("requires", {})), where)
+			if choice.has("repeat") and not choice["repeat"] is bool:
+				issues.append("%s: 'repeat' deve valere true o false" % where)
 		var characters: Dictionary = _get_dict(node, "characters")
 		for slot: Variant in characters:
 			if not str(slot) in SLOTS:

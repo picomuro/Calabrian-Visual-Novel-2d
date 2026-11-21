@@ -36,8 +36,10 @@ signal state_changed
 
 #region Configurazione
 
-## Versione del formato dati prodotto da to_dict(); incrementarla quando cambia la struttura.
-const SAVE_FORMAT_VERSION: int = 1
+## Versione del formato dati prodotto da to_dict(). Quando cambia la struttura:
+## incrementarla e aggiungere il passo corrispondente in migrate_save_data().
+## Storia: 1 = prima versione; 2 = aggiunto "applied_effects" (effetti una volta sola).
+const SAVE_FORMAT_VERSION: int = 2
 
 ## Asse di karma predefinito.
 const KARMA_MAIN: String = "main"
@@ -83,6 +85,8 @@ var _karma: Dictionary[String, int] = {}
 var _stats: Dictionary[String, int] = {}
 var _inventory: Dictionary[String, int] = {}
 var _flags: Dictionary[String, bool] = {}
+## Blocchi di effetti già applicati (chiave -> true): servono a non darli due volte.
+var _applied_effects: Dictionary[String, bool] = {}
 
 ## Location corrente ("" quando si è sulla mappa).
 var current_location_id: String = ""
@@ -110,6 +114,7 @@ func _reset_values() -> void:
 	_stats.assign(DEFAULT_STATS)
 	_inventory.clear()
 	_flags.clear()
+	_applied_effects.clear()
 	current_location_id = ""
 	current_dialogue_node = ""
 
@@ -323,6 +328,23 @@ func apply_effects(effects: Dictionary) -> void:
 						set_flag(str(flag_id), true)
 			_:
 				push_warning("GameState.apply_effects: effetto sconosciuto '%s'." % key)
+
+
+## Applica [param effects] solo la prima volta che viene usata [param key] in questa
+## partita; le volte successive non fa nulla. Ritorna true se gli effetti sono stati applicati.
+## Evita di raccogliere più volte le stesse ricompense rigiocando un dialogo.
+## La chiave la decide chi chiama (es. "spiaggia/mirta_racconto#scelta").
+func apply_effects_once(key: String, effects: Dictionary) -> bool:
+	if effects.is_empty() or _applied_effects.has(key):
+		return false
+	_applied_effects[key] = true
+	apply_effects(effects)
+	return true
+
+
+## True se il blocco di effetti con questa chiave è già stato applicato.
+func has_applied_effects(key: String) -> bool:
+	return _applied_effects.has(key)
 
 
 ## Verifica un blocco "requires". Tutte le condizioni devono essere vere. Formato:
@@ -540,20 +562,45 @@ func to_dict() -> Dictionary:
 		"stats": _stats.duplicate(),
 		"inventory": _inventory.duplicate(),
 		"flags": _flags.duplicate(),
+		"applied_effects": _applied_effects.keys(),
 		"location_id": current_location_id,
 		"dialogue_node": current_dialogue_node,
 	}
 
 
-## Sostituisce lo stato con i dati di [param data] (tipicamente letti da JSON).
-## Parte dai valori di default, così i campi mancanti nei salvataggi vecchi restano validi.
-## I numeri JSON arrivano come float: vengono convertiti in int.
-func from_dict(data: Dictionary) -> void:
-	_reset_values()
+## Versione di un salvataggio letto da file (quelli senza il campo sono della versione 1).
+static func get_save_version(data: Dictionary) -> int:
+	return maxi(_to_int(data.get("version", 1), 1), 1)
 
-	var version: int = _to_int(data.get("version", 0), 0)
+
+## Porta i dati di un salvataggio vecchio al formato attuale, un passo di versione
+## alla volta. Non modifica [param data]: ritorna una copia aggiornata.
+static func migrate_save_data(data: Dictionary) -> Dictionary:
+	var migrated: Dictionary = data.duplicate(true)
+	var version: int = get_save_version(migrated)
+	while version < SAVE_FORMAT_VERSION:
+		match version:
+			1:
+				# 1 -> 2: nessun effetto risulta ancora applicato.
+				if not migrated.get("applied_effects", null) is Array:
+					migrated["applied_effects"] = []
+		version += 1
+	migrated["version"] = maxi(version, SAVE_FORMAT_VERSION)
+	return migrated
+
+
+## Sostituisce lo stato con i dati di [param data] (tipicamente letti da JSON).
+## I salvataggi vecchi vengono prima convertiti con migrate_save_data(). Parte dai valori
+## di default, così i campi mancanti restano validi; i numeri JSON (float) diventano int.
+## Ritorna false, senza toccare lo stato, se il salvataggio viene da una versione del
+## gioco più recente: leggerlo perderebbe dati che questa versione non conosce.
+func from_dict(source: Dictionary) -> bool:
+	var version: int = get_save_version(source)
 	if version > SAVE_FORMAT_VERSION:
-		push_warning("GameState: salvataggio di una versione più recente (%d > %d)." % [version, SAVE_FORMAT_VERSION])
+		push_warning("GameState: salvataggio di una versione più recente (%d > %d), non caricato." % [version, SAVE_FORMAT_VERSION])
+		return false
+	var data: Dictionary = migrate_save_data(source)
+	_reset_values()
 
 	# Karma: accetta sia il formato a più assi {"main": 5} sia un singolo numero.
 	var raw_karma: Variant = data.get("karma", {})
@@ -581,11 +628,17 @@ func from_dict(data: Dictionary) -> void:
 			if raw_flags[flag_id] == true:
 				_flags[str(flag_id)] = true
 
+	var raw_applied: Variant = data.get("applied_effects", [])
+	if raw_applied is Array:
+		for key: Variant in raw_applied:
+			_applied_effects[str(key)] = true
+
 	current_location_id = str(data.get("location_id", ""))
 	current_dialogue_node = str(data.get("dialogue_node", ""))
 
 	state_replaced.emit()
 	state_changed.emit()
+	return true
 
 
 ## Conversione difensiva Variant -> int (i valori JSON possono essere float o tipi errati).

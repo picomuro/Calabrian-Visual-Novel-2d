@@ -28,6 +28,10 @@ func _ready() -> void:
 	for zone: MapZone in get_zones():
 		zone.zone_selected.connect(_on_zone_selected)
 		zone.locked_zone_selected.connect(_on_locked_zone_selected)
+	# Se all'avvio il salvataggio era danneggiato, il giocatore deve saperlo.
+	var startup_notice: String = SaveManager.take_startup_notice()
+	if not startup_notice.is_empty():
+		show_toast(startup_notice)
 
 
 ## Apre il menu (salva, carica, nuova partita) mettendo il gioco in pausa.
