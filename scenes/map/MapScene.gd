@@ -12,19 +12,30 @@ extends Control
 
 const TOAST_VISIBLE_TIME: float = 2.5
 const TOAST_FADE_TIME: float = 0.25
+const GAME_MENU_PATH: String = "res://scenes/ui/GameMenuOverlay.tscn"
 
 var _toast_tween: Tween
 
 @onready var _map_frame: Control = %MapFrame
 @onready var _toast_panel: PanelContainer = %ToastPanel
 @onready var _toast_label: Label = %ToastLabel
+@onready var _open_menu_button: Button = %OpenMenuButton
 
 
 func _ready() -> void:
 	_toast_panel.modulate.a = 0.0
+	_open_menu_button.pressed.connect(open_game_menu)
 	for zone: MapZone in get_zones():
 		zone.zone_selected.connect(_on_zone_selected)
 		zone.locked_zone_selected.connect(_on_locked_zone_selected)
+
+
+## Apre il menu (salva, carica, nuova partita) mettendo il gioco in pausa.
+func open_game_menu() -> Node:
+	var menu: Node = SceneManager.open_overlay(GAME_MENU_PATH, {}, true)
+	if menu != null and menu.has_signal(&"notice") and not menu.is_connected(&"notice", show_toast):
+		menu.connect(&"notice", show_toast)
+	return menu
 
 
 ## Tutte le zone presenti nella mappa.

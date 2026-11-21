@@ -21,6 +21,12 @@ func _run() -> void:
 	var save_manager: Node = get_tree().root.get_node(^"/root/SaveManager")
 	var scene_manager: Node = get_tree().root.get_node(^"/root/SceneManager")
 	_check(game_state != null and save_manager != null and scene_manager != null, "autoload presenti")
+	# Il test non deve mai toccare i salvataggi veri: niente salvataggio automatico,
+	# file di prova separati e stato di partenza pulito (all'avvio SaveManager
+	# potrebbe aver ripreso il salvataggio automatico del gioco).
+	save_manager.autosave_enabled = false
+	save_manager.save_path = TEST_SAVE_PATH
+	game_state.reset()
 
 	# --- Karma e fasce ---
 	var karma_events: Array[int] = []
@@ -57,7 +63,6 @@ func _run() -> void:
 	game_state.set_current_location("spiaggia")
 
 	# --- Salvataggio / caricamento ---
-	save_manager.save_path = TEST_SAVE_PATH
 	_check(save_manager.save_game(), "salvataggio scritto")
 	game_state.reset()
 	_check(game_state.get_item_quantity("moneta") == 0, "reset svuota l'inventario")
@@ -70,7 +75,6 @@ func _run() -> void:
 	_check(save_manager.peek_save_info().get("location_id", "") == "spiaggia", "peek_save_info")
 	save_manager.delete_save()
 	_check(not save_manager.has_save(), "salvataggio di test eliminato")
-	save_manager.save_path = save_manager.DEFAULT_SAVE_PATH
 
 	# --- SceneManager: percorsi e overlay ---
 	_check(scene_manager.get_dialogue_path("spiaggia") == "res://data/dialogues/spiaggia.json", "percorso dialogo per location")
@@ -86,8 +90,11 @@ func _run() -> void:
 	game_state.reset()
 	await _test_map_scene(game_state)
 	game_state.reset()
+	await _test_save_slots_and_menu(game_state, save_manager)
+	game_state.reset()
 	await _test_navigation(game_state)
 	game_state.reset()
+	save_manager.save_path = save_manager.DEFAULT_SAVE_PATH
 
 	print("SMOKE TEST: %s (%d fallimenti)" % ["OK" if _failures == 0 else "FALLITO", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
@@ -232,6 +239,70 @@ func _test_map_scene(game_state: Node) -> void:
 	await get_tree().process_frame
 
 
+## Slot "auto"/"manuale" e menu di gioco della mappa (Salva, Carica, Nuova partita).
+func _test_save_slots_and_menu(game_state: Node, save_manager: Node) -> void:
+	var auto: String = save_manager.SLOT_AUTO
+	var manual: String = save_manager.SLOT_MANUAL
+	_check(save_manager.get_slot_path(manual) == "user://smoke_test_save_manuale.json", "slot: percorso dello slot manuale")
+	_check(not save_manager.autosave() and not save_manager.has_save(auto), "slot: salvataggio automatico disattivato non scrive")
+	_check(not str(save_manager.format_saved_at("2026-11-21T09:31:00")).is_empty(), "slot: data del salvataggio leggibile")
+
+	save_manager.autosave_enabled = true
+	game_state.add_karma(5)
+	_check(save_manager.save_game(manual), "slot: salvataggio manuale scritto")
+	game_state.add_karma(20)
+	_check(save_manager.autosave() and save_manager.has_save(auto), "slot: salvataggio automatico scritto")
+	_check(save_manager.load_game(manual) and game_state.get_karma() == 5, "slot: caricamento manuale indipendente dall'automatico")
+
+	var packed: PackedScene = load("res://scenes/map/MapScene.tscn")
+	var map: Control = packed.instantiate()
+	get_tree().root.add_child(map)
+	await get_tree().process_frame
+	var sm: Node = get_tree().root.get_node(^"/root/SceneManager")
+	var toast: Label = map.get_node(^"%ToastLabel")
+
+	# Salva: scrive lo slot manuale, chiude il menu e mostra il messaggio.
+	var menu: Node = map.call(&"open_game_menu")
+	_check(menu != null and get_tree().paused, "menu: aperto con il gioco in pausa")
+	if menu == null:
+		map.queue_free()
+		return
+	var info: Label = menu.get_node(^"%InfoLabel")
+	_check(info.text.begins_with("Salvataggio manuale:") and not (menu.get_node(^"%LoadButton") as Button).disabled, "menu: mostra la data del salvataggio manuale")
+	game_state.set_flag("prima_del_salva")
+	(menu.get_node(^"%SaveButton") as Button).pressed.emit()
+	_check(not sm.has_open_overlay() and not get_tree().paused and toast.text == "Partita salvata.", "menu: Salva chiude il menu e avvisa")
+
+	# Nuova partita: con conferma, azzera lo stato e aggiorna lo slot automatico.
+	menu = map.call(&"open_game_menu")
+	(menu.get_node(^"%NewGameButton") as Button).pressed.emit()
+	var confirm: Node = sm.get_overlay(sm.CONFIRM_OVERLAY_PATH)
+	_check(confirm != null and game_state.has_flag("prima_del_salva"), "menu: Nuova partita chiede conferma e non azzera subito")
+	if confirm != null:
+		confirm.emit_signal(&"confirmed")
+	_check(not game_state.has_flag("prima_del_salva") and game_state.get_karma() == 0 and not sm.has_open_overlay() and not get_tree().paused, "menu: Nuova partita azzera lo stato")
+	game_state.set_flag("dopo_nuova_partita")
+	save_manager.load_game(auto)
+	_check(not game_state.has_flag("dopo_nuova_partita") and game_state.get_karma() == 0, "menu: Nuova partita aggiorna lo slot automatico")
+
+	# Carica: con conferma, torna allo slot manuale e aggiorna lo slot automatico.
+	menu = map.call(&"open_game_menu")
+	(menu.get_node(^"%LoadButton") as Button).pressed.emit()
+	confirm = sm.get_overlay(sm.CONFIRM_OVERLAY_PATH)
+	if confirm != null:
+		confirm.emit_signal(&"confirmed")
+	_check(game_state.has_flag("prima_del_salva") and game_state.get_karma() == 5 and not sm.has_open_overlay() and toast.text == "Salvataggio caricato.", "menu: Carica ripristina il salvataggio manuale")
+	game_state.reset()
+	save_manager.load_game(auto)
+	_check(game_state.has_flag("prima_del_salva"), "menu: Carica aggiorna lo slot automatico")
+
+	save_manager.autosave_enabled = false
+	save_manager.delete_save(auto)
+	save_manager.delete_save(manual)
+	map.queue_free()
+	await get_tree().process_frame
+
+
 ## Navigazione: richieste in coda, ripiego sulla mappa, errore con uscita, tasto indietro.
 ## Gira per ultima perché sostituisce davvero la scena corrente.
 func _test_navigation(game_state: Node) -> void:
@@ -283,6 +354,19 @@ func _test_navigation(game_state: Node) -> void:
 	if confirm != null:
 		confirm.emit_signal(&"confirmed")
 	_check(await _wait_for_scene(sm, sm.MAP_SCENE_PATH) and not get_tree().paused, "conferma: ritorno alla mappa senza pausa residua")
+
+	# 7. Ritorno sulla mappa = salvataggio automatico (slot "auto").
+	var save_manager: Node = get_tree().root.get_node(^"/root/SaveManager")
+	save_manager.delete_save(save_manager.SLOT_AUTO)
+	save_manager.autosave_enabled = true
+	game_state.set_flag("prova_autosave")
+	sm.go_to_location("giardino_botanico")
+	await _wait_for_scene(sm, sm.DIALOGUE_SCENE_PATH)
+	_check(not save_manager.has_save(save_manager.SLOT_AUTO), "salvataggio automatico: nessun salvataggio durante il dialogo")
+	sm.go_to_map()
+	_check(await _wait_for_scene(sm, sm.MAP_SCENE_PATH) and save_manager.has_save(save_manager.SLOT_AUTO), "salvataggio automatico: scritto al ritorno sulla mappa")
+	save_manager.autosave_enabled = false
+	save_manager.delete_save(save_manager.SLOT_AUTO)
 
 	DirAccess.remove_absolute(immediate)
 	DirAccess.remove_absolute(broken)

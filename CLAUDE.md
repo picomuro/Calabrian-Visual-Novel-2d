@@ -27,14 +27,15 @@ L'utente scrive in italiano: rispondi in italiano.
 | File | Ruolo |
 |---|---|
 | `autoload/GameState.gd` | Stato di gioco: karma per assi (`main`, da -100 a 100; fasce cattivo/neutro/buono con soglie ±10), stats (forza/carisma/intelligenza), inventario, flag, location corrente. Segnali `*_changed` più `state_changed`. Contiene `apply_effects(dict)`, `meets_requirements(dict)` (una chiave sconosciuta dà false e un warning), `describe_requirements`, `to_dict`/`from_dict` (versione 1). |
-| `autoload/SaveManager.gd` | Salvataggio in `user://save.json` (scrive un file tmp e poi lo rinomina). Funzioni save/load/peek/delete/has. **Non c'è ancora una UI di salvataggio.** |
+| `autoload/SaveManager.gd` | Salvataggi JSON (scrive un file tmp e poi lo rinomina). Due slot: `auto` (`user://save.json`) e `manuale` (`user://save_manuale.json`); le funzioni save/load/peek/delete/has prendono lo slot (default `auto`). Salvataggio automatico a ogni ritorno sulla mappa (`SceneManager.scene_changed`) e quando l'app va in background sulla mappa; all'avvio riprende dallo slot `auto`. Si salva solo sulla mappa, mai a metà dialogo. `autosave_enabled = false` disattiva salvataggio automatico e ripresa (usato dai test). |
 | `autoload/SceneManager.gd` | Cambio scena con fade e caricamento threaded. `go_to_location(id)` apre `data/dialogues/<id>.json` nella DialogueScene. Le navigazioni chieste durante una transizione vengono accodate. Se la navigazione fallisce emette `navigation_failed` e torna alla mappa. Overlay: `open_overlay(path, params, pause_game)` / `close_overlay`, `ask_confirmation(...)`. Il tasto indietro chiude l'overlay in cima; altrimenti chiede conferma per uscire (sulla mappa) o per tornare alla mappa (nel dialogo). |
 | `scenes/map/MapScene` + `MapZone` | Mappa in AspectRatioContainer 16:9. Zone (TextureButton): Spiaggia, Giardinetti, GiardinoBotanico, Loft (bloccata finché non c'è il flag `loft_aperto`), ViaggioSoverato. Ogni zona ha `location_id`, `requires` e `locked_hint`. |
 | `scenes/dialogue/DialogueRunner.gd` | Logica (senza UI) dei dialoghi JSON: macchina a stati, `validate()`, gli effetti di un nodo si applicano ogni volta che ci si entra. |
 | `scenes/dialogue/DialogueScene` + `CharacterSlot` | UI dei dialoghi JSON: effetto macchina da scrivere, scelte a destra, slot sinistra/centro/destra con ritratti ridimensionati a contenimento. Se il dialogo ha un errore compare il pulsante "Torna alla mappa". |
+| `scenes/ui/GameMenuOverlay` | Menu aperto dal pulsante "Menu" in alto a destra della mappa (in pausa): Salva (slot manuale), Carica e Nuova partita (con conferma; entrambe aggiornano subito lo slot `auto`). Comunica l'esito col segnale `notice`, che la mappa mostra nel toast. |
 | `scenes/ui/ConfirmOverlay`, `SafeAreaMargin.gd` | Finestra modale di conferma (segnali `confirmed` e `close_requested`); margini per la safe area dei telefoni. |
 | `data/ItemData.gd`, `data/items/*.tres` | Oggetti: chiave_antica, moneta, medaglione. |
-| `tests/smoke_test.*` | Copre stato, salvataggio, effetti, validità di tutti i dialoghi, scene e navigazione (inclusi i casi di soft-lock). |
+| `tests/smoke_test.*` | Usa file di salvataggio propri e disattiva il salvataggio automatico, quindi non tocca i salvataggi veri. Copre stato, salvataggio (slot, menu, salvataggio automatico al ritorno sulla mappa), effetti, validità di tutti i dialoghi, scene e navigazione (inclusi i casi di soft-lock). |
 
 Le scene ricevono i parametri con `receive_params(params)`, che SceneManager chiama prima di `_ready`. Gli overlay si chiudono emettendo `close_requested`.
 
@@ -61,17 +62,17 @@ Le scene ricevono i parametri con `receive_params(params)`, che SceneManager chi
 - **Immagini protette da copyright** (fan art e foto di un attore): spirito, irina, padre. La repo deve **restare privata**; se diventa pubblica vanno rimosse dalla storia git.
 
 ## Da fare
-Stato verificato sul codice il 2026-11-21: nessuna di queste voci è ancora iniziata.
+Stato verificato sul codice il 2026-11-21.
 
 **Step originali mancanti:**
 - 4. Inventario e HUD (karma, stats) come overlay. Non esiste ancora nessuna scena; `SceneManager.open_overlay` è già pronto per ospitarle.
-- 5. UI e flusso di salvataggio/caricamento. Oggi nessun file chiama `SaveManager.save_game`/`load_game`: il gioco non salva mai.
+- ~~5. UI e flusso di salvataggio/caricamento~~: fatto (salvataggio automatico + menu della mappa, vedi SaveManager e GameMenuOverlay).
 - 6. README con: come aggiungere un dialogo, un oggetto, una zona; export Android (JDK, Android SDK, export templates); export iOS (Mac con Xcode). Il commento in testa a `DialogueRunner.gd` rimanda già al README, che non esiste.
 
 **Refactoring proposto (non ancora approvato, chiedi prima):**
 - 4. Validatore più completo. Oggi `validate()` controlla nodo iniziale, destinazioni, slot e id dei personaggi. Non controlla chiavi di `effects`/`requires`, espressioni, file di sfondo e ritratti, né se le `@location:<id>` esistono.
-- 5. Salvataggio solo dalla mappa.
-- 6. Salvataggi più robusti: versioning e migrazione. Oggi `from_dict` dà solo un warning se la versione è più recente e non migra.
+- ~~5. Salvataggio solo dalla mappa~~: fatto insieme allo step 5.
+- 6. Salvataggi più robusti: versioning e migrazione. Oggi `from_dict` dà solo un warning se la versione è più recente e non migra; un file di salvataggio illeggibile all'avvio viene ignorato (errore nel log) e si parte da zero.
 - 7. Effetti "una volta sola": oggi gli effetti si riapplicano rivisitando un nodo e le ricompense si possono ripetere (farming).
 - 8. Più test.
 - ~~9. Un solo sistema di dialoghi~~: fatto, Dialogic è stato rimosso.
