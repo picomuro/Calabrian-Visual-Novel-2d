@@ -277,11 +277,15 @@ func _resolve_character(character_id: String, expression: String) -> Dictionary:
 
 #region Validazione (aiuta chi scrive i dialoghi: i problemi finiscono in console)
 
-## Controlla i riferimenti del dialogo caricato. Ritorna l'elenco dei problemi trovati.
+## Controlla il dialogo caricato: riferimenti tra nodi, location di uscita, personaggi
+## ed espressioni, formato di sfondi, effetti e requisiti.
+## Ritorna l'elenco dei problemi trovati (vuoto = tutto valido).
+## Le immagini non ancora presenti non sono errori: vedi find_missing_assets().
 func validate() -> PackedStringArray:
 	var issues: PackedStringArray = []
 	if not _nodes.has(_start_node):
 		issues.append("nodo iniziale '%s' inesistente" % _start_node)
+	_validate_character_definitions(issues)
 	for node_key: Variant in _nodes:
 		var node_id: String = str(node_key)
 		var node: Variant = _nodes[node_key]
@@ -290,12 +294,24 @@ func validate() -> PackedStringArray:
 			continue
 		if node.has("next"):
 			_check_target(issues, node_id, str(node["next"]))
+		if node.has("effects"):
+			_append_prefixed(issues, GameState.validate_effects(node["effects"]), "nodo '%s'" % node_id)
+		if node.has("background"):
+			_check_background(issues, node_id, node["background"])
 		var branches: Variant = node.get("branches", [])
-		if branches is Array:
+		if not branches is Array:
+			issues.append("'branches' nel nodo '%s' deve essere un elenco" % node_id)
+		else:
 			for branch: Variant in branches:
-				if branch is Dictionary and branch.has("next"):
+				if not branch is Dictionary:
+					issues.append("branch non valido nel nodo '%s'" % node_id)
+					continue
+				if branch.has("next"):
 					_check_target(issues, node_id, str(branch["next"]))
-		for choice: Variant in _get_raw_choices(node):
+				_append_prefixed(issues, GameState.validate_requirements(branch.get("requires", {})), "branch del nodo '%s'" % node_id)
+		var raw_choices: Array = _get_raw_choices(node)
+		for index: int in raw_choices.size():
+			var choice: Variant = raw_choices[index]
 			if not choice is Dictionary:
 				issues.append("scelta non valida nel nodo '%s'" % node_id)
 				continue
@@ -303,23 +319,105 @@ func validate() -> PackedStringArray:
 				issues.append("scelta senza testo nel nodo '%s'" % node_id)
 			if choice.has("next"):
 				_check_target(issues, node_id, str(choice["next"]))
+			var where: String = "scelta %d del nodo '%s'" % [index + 1, node_id]
+			_append_prefixed(issues, GameState.validate_effects(choice.get("effects", {})), where)
+			_append_prefixed(issues, GameState.validate_requirements(choice.get("requires", {})), where)
 		var characters: Dictionary = _get_dict(node, "characters")
 		for slot: Variant in characters:
 			if not str(slot) in SLOTS:
 				issues.append("posizione '%s' non valida nel nodo '%s' (usa left/center/right)" % [slot, node_id])
 			var entry: Variant = characters[slot]
 			var character_id: String = str(entry.get("id", "")) if entry is Dictionary else (str(entry) if entry != null else "")
-			if not character_id.is_empty() and not _characters.has(character_id):
+			if character_id.is_empty():
+				continue
+			if not _characters.has(character_id):
 				issues.append("personaggio '%s' non definito (nodo '%s')" % [character_id, node_id])
+				continue
+			var expression: String = str(entry.get("expression", "")) if entry is Dictionary else ""
+			var expressions: Dictionary = _get_dict(_get_dict(_characters, character_id), "expressions")
+			if not expression.is_empty() and not expressions.has(expression):
+				issues.append("espressione '%s' non definita per '%s' (nodo '%s')" % [expression, character_id, node_id])
 	return issues
+
+
+## Personaggi: espressione di default esistente e file dei ritratti presenti.
+func _validate_character_definitions(issues: PackedStringArray) -> void:
+	for character_key: Variant in _characters:
+		var character_id: String = str(character_key)
+		var definition: Variant = _characters[character_key]
+		if not definition is Dictionary:
+			issues.append("la definizione del personaggio '%s' non è un oggetto" % character_id)
+			continue
+		var expressions: Dictionary = _get_dict(definition, "expressions")
+		var default_expression: String = str(definition.get("default_expression", ""))
+		if not default_expression.is_empty() and not expressions.has(default_expression):
+			issues.append("espressione di default '%s' non definita per '%s'" % [default_expression, character_id])
+
+
+## Immagini (ritratti e sfondi) citate dal dialogo ma non ancora presenti nel progetto.
+## Non sono errori: finché manca il file il gioco mostra un segnaposto (riquadro col
+## nome del personaggio, o il colore di sfondo). Serve come elenco delle immagini da fornire.
+func find_missing_assets() -> PackedStringArray:
+	var missing: PackedStringArray = []
+	for character_key: Variant in _characters:
+		var expressions: Dictionary = _get_dict(_get_dict(_characters, str(character_key)), "expressions")
+		for expression: Variant in expressions:
+			_append_if_missing(missing, str(expressions[expression]))
+	for node_key: Variant in _nodes:
+		var node: Variant = _nodes[node_key]
+		if node is Dictionary and node.has("background"):
+			_append_if_missing(missing, str(_split_background(node["background"]).get("image", "")))
+	return missing
+
+
+static func _append_if_missing(missing: PackedStringArray, path: String) -> void:
+	if not path.is_empty() and not ResourceLoader.exists(path) and not path in missing:
+		missing.append(path)
+
+
+## Sfondo: percorso "res://..." di un'immagine, colore ("#rrggbb" o nome come "black"),
+## oppure {image, color}. Stesse regole di DialogueScene. Ritorna {image, color}, oppure
+## {} se il valore non è di nessuno di questi tipi.
+static func _split_background(background: Variant) -> Dictionary:
+	if background is Dictionary:
+		return {"image": str(background.get("image", "")), "color": str(background.get("color", ""))}
+	if background is String:
+		if (background as String).begins_with("res://"):
+			return {"image": background, "color": ""}
+		return {"image": "", "color": background}
+	return {}
+
+
+## Controlla il formato dello sfondo (l'esistenza del file la segnala find_missing_assets).
+func _check_background(issues: PackedStringArray, node_id: String, background: Variant) -> void:
+	if background == null:
+		return
+	var parts: Dictionary = _split_background(background)
+	if parts.is_empty():
+		issues.append("sfondo non valido nel nodo '%s'" % node_id)
+		return
+	var color: String = parts["color"]
+	# Color.from_string usa il valore di ripiego solo se il testo non è un colore:
+	# se con due ripieghi diversi il risultato cambia, il colore non è valido.
+	if not color.is_empty() and Color.from_string(color, Color.BLACK) != Color.from_string(color, Color.WHITE):
+		issues.append("colore di sfondo non valido nel nodo '%s': %s" % [node_id, color])
+
+
+static func _append_prefixed(issues: PackedStringArray, found: PackedStringArray, where: String) -> void:
+	for issue: String in found:
+		issues.append("%s: %s" % [where, issue])
 
 
 func _check_target(issues: PackedStringArray, from_id: String, target: String) -> void:
 	if target == EXIT_END or target == EXIT_MAP:
 		return
 	if target.begins_with(EXIT_LOCATION_PREFIX):
-		if target.length() == EXIT_LOCATION_PREFIX.length():
+		var location_id: String = target.trim_prefix(EXIT_LOCATION_PREFIX)
+		var dialogue_path: String = SceneManager.get_dialogue_path(location_id)
+		if location_id.is_empty():
 			issues.append("'%s' senza id di location (nodo '%s')" % [target, from_id])
+		elif not FileAccess.file_exists(dialogue_path):
+			issues.append("il nodo '%s' porta alla location '%s', che non ha un dialogo (%s)" % [from_id, location_id, dialogue_path])
 		return
 	if not _nodes.has(target):
 		issues.append("il nodo '%s' punta a '%s', che non esiste" % [from_id, target])

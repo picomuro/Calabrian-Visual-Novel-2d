@@ -385,6 +385,115 @@ func meets_requirements(requirements: Dictionary) -> bool:
 	return true
 
 
+## Controlla un blocco "effects" scritto nei dati senza applicarlo.
+## Ritorna l'elenco dei problemi (vuoto se è tutto valido). Usato dal validatore dei dialoghi.
+func validate_effects(effects: Variant) -> PackedStringArray:
+	var issues: PackedStringArray = []
+	if not effects is Dictionary:
+		issues.append("'effects' deve essere un oggetto")
+		return issues
+	for key: Variant in effects:
+		var value: Variant = effects[key]
+		match str(key):
+			"karma":
+				if value is Dictionary:
+					for axis: Variant in value:
+						_check_karma_axis(issues, str(axis))
+						_check_number(issues, value[axis], "karma.%s" % axis)
+				else:
+					_check_number(issues, value, "karma")
+			"stats":
+				_check_number_map(issues, value, "stats", _check_stat_id)
+			"items":
+				_check_number_map(issues, value, "items", _check_item_id)
+			"flags":
+				_check_flags(issues, value)
+			_:
+				issues.append("effetto sconosciuto '%s' (validi: karma, stats, items, flags)" % key)
+	return issues
+
+
+## Controlla un blocco "requires" scritto nei dati senza valutarlo.
+## Ritorna l'elenco dei problemi (vuoto se è tutto valido).
+func validate_requirements(requirements: Variant) -> PackedStringArray:
+	var issues: PackedStringArray = []
+	if not requirements is Dictionary:
+		issues.append("'requires' deve essere un oggetto")
+		return issues
+	for key: Variant in requirements:
+		var value: Variant = requirements[key]
+		match str(key):
+			"stats":
+				_check_number_map(issues, value, "stats", _check_stat_id)
+			"items":
+				if value is Array:
+					for item_id: Variant in value:
+						_check_item_id(issues, str(item_id))
+				else:
+					_check_number_map(issues, value, "items", _check_item_id)
+			"flags":
+				_check_flags(issues, value)
+			"karma":
+				if not value is Dictionary:
+					issues.append("'karma' nei requisiti deve essere un oggetto {min, max, axis}")
+					continue
+				for karma_key: Variant in value:
+					match str(karma_key):
+						"min", "max":
+							_check_number(issues, value[karma_key], "karma.%s" % karma_key)
+						"axis":
+							_check_karma_axis(issues, str(value[karma_key]))
+						_:
+							issues.append("chiave '%s' non valida in 'karma' (valide: min, max, axis)" % karma_key)
+			"karma_tier":
+				var tiers: Array = value if value is Array else [value]
+				for tier: Variant in tiers:
+					if not StringName(str(tier)) in [TIER_EVIL, TIER_NEUTRAL, TIER_GOOD]:
+						issues.append("fascia di karma '%s' sconosciuta (valide: cattivo, neutro, buono)" % tier)
+			_:
+				issues.append("requisito sconosciuto '%s' (validi: stats, items, flags, karma, karma_tier)" % key)
+	return issues
+
+
+func _check_number(issues: PackedStringArray, value: Variant, label: String) -> void:
+	if not (value is int or value is float):
+		issues.append("'%s' deve essere un numero" % label)
+
+
+## {id: numero}: controlla ogni id con [param check_id] e che i valori siano numeri.
+func _check_number_map(issues: PackedStringArray, value: Variant, label: String, check_id: Callable) -> void:
+	if not value is Dictionary:
+		issues.append("'%s' deve essere un oggetto {id: numero}" % label)
+		return
+	for id: Variant in value:
+		check_id.call(issues, str(id))
+		_check_number(issues, value[id], "%s.%s" % [label, id])
+
+
+func _check_flags(issues: PackedStringArray, value: Variant) -> void:
+	if value is Dictionary:
+		for flag_id: Variant in value:
+			if not value[flag_id] is bool:
+				issues.append("il flag '%s' deve valere true o false" % flag_id)
+	elif not value is Array:
+		issues.append("'flags' deve essere un oggetto {flag: true/false} o un elenco")
+
+
+func _check_stat_id(issues: PackedStringArray, stat_id: String) -> void:
+	if not DEFAULT_STATS.has(stat_id):
+		issues.append("statistica '%s' sconosciuta (valide: %s)" % [stat_id, ", ".join(DEFAULT_STATS.keys())])
+
+
+func _check_item_id(issues: PackedStringArray, item_id: String) -> void:
+	if not ResourceLoader.exists(ItemData.get_item_path(item_id)):
+		issues.append("oggetto '%s' inesistente (manca %s)" % [item_id, ItemData.get_item_path(item_id)])
+
+
+func _check_karma_axis(issues: PackedStringArray, axis: String) -> void:
+	if not axis in KARMA_AXES:
+		issues.append("asse di karma '%s' sconosciuto (validi: %s)" % [axis, ", ".join(KARMA_AXES)])
+
+
 ## Testo leggibile per i requisiti visibili al giocatore (es. "Carisma 3, Moneta x3").
 ## I flag non vengono descritti per non svelare la trama. Ritorna "" se non c'è nulla da mostrare.
 func describe_requirements(requirements: Dictionary) -> String:

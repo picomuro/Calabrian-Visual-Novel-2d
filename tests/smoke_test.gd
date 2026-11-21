@@ -84,6 +84,7 @@ func _run() -> void:
 	_test_effects_and_requirements(game_state)
 	game_state.reset()
 	_test_all_dialogues_valid()
+	_test_validator()
 	_test_dialogue_runner(game_state)
 	game_state.reset()
 	await _test_dialogue_scene(game_state)
@@ -126,7 +127,75 @@ func _test_all_dialogues_valid() -> void:
 		var loaded: bool = runner.load_dialogue("res://data/dialogues/".path_join(file_name))
 		var issues: PackedStringArray = runner.validate() if loaded else PackedStringArray(["non caricato"])
 		_check(issues.is_empty(), "dialogo %s valido %s" % [file_name, issues])
+		var missing: PackedStringArray = runner.find_missing_assets() if loaded else PackedStringArray()
+		if not missing.is_empty():
+			print("  [info] %s: immagini ancora da fornire (per ora segnaposto): %s" % [file_name, ", ".join(missing)])
 		runner.free()
+
+
+## Validatore: un dialogo corretto non dà problemi, uno pieno di errori li segnala tutti.
+## (Il dialogo sbagliato stampa i suoi problemi come WARNING: è voluto.)
+func _test_validator() -> void:
+	var valid: Dictionary = {
+		"id": "valido", "start": "a",
+		"characters": {"lia": {"name": "Lia", "default_expression": "default", "expressions": {"default": "res://assets/characters/lia/lia.webp"}}},
+		"nodes": {
+			"a": {"background": "#202020", "characters": {"left": {"id": "lia", "expression": "default"}, "right": "lia", "center": null},
+				"effects": {"karma": 2, "stats": {"forza": 1}, "items": {"moneta": 1}, "flags": ["visto"]}, "text": "Ciao.", "next": "b"},
+			"b": {"background": {"image": "res://assets/backgrounds/spiaggia.webp", "color": "black"}, "text": "Scegli.",
+				"choices": [{"text": "Vai", "next": "@location:spiaggia", "requires": {"karma": {"min": 1, "axis": "main"}, "karma_tier": ["neutro", "buono"], "items": ["moneta"], "flags": {"visto": true}}}],
+				"branches": [{"requires": {"stats": {"forza": 2}}, "next": "@map"}]},
+		},
+	}
+	var runner: DialogueRunner = DialogueRunner.new()
+	runner.load_from_dict(valid, "valido")
+	var issues: PackedStringArray = runner.validate()
+	_check(issues.is_empty(), "validatore: dialogo corretto senza problemi %s" % [issues])
+	_check(runner.find_missing_assets().is_empty(), "validatore: nessuna immagine mancante nel dialogo corretto")
+	runner.free()
+
+	var broken: Dictionary = {
+		"id": "rotto", "start": "a",
+		"characters": {"lia": {"name": "Lia", "default_expression": "triste", "expressions": {"default": "res://non/esiste.webp"}}},
+		"nodes": {
+			"a": {"background": "res://non/esiste_sfondo.webp", "characters": {"left": {"id": "lia", "expression": "arrabbiata"}},
+				"effects": {"karma": {"altro_asse": 1}, "stats": {"magia": 1}, "items": {"spada": 1}, "flags": {"x": "si"}, "soldi": 3},
+				"text": "...", "next": "@location:inesistente"},
+			"b": {"background": "verdastro", "text": "...", "next": "a",
+				"choices": [{"text": "C", "next": "a", "requires": {"karma": {"minimo": 1}, "karma_tier": "santo", "livello": 2}, "effects": {"stats": {"forza": "tanto"}}}],
+				"branches": [{"requires": {"items": ["spada"]}, "next": "a"}]},
+		},
+	}
+	runner = DialogueRunner.new()
+	runner.load_from_dict(broken, "rotto")
+	issues = runner.validate()
+	var expected: Dictionary[String, String] = {
+		"espressione di default 'triste'": "espressione di default mancante",
+		"colore di sfondo non valido": "colore non valido",
+		"espressione 'arrabbiata' non definita": "espressione del nodo mancante",
+		"asse di karma 'altro_asse'": "asse di karma sconosciuto",
+		"statistica 'magia'": "statistica sconosciuta",
+		"oggetto 'spada' inesistente": "oggetto inesistente",
+		"il flag 'x' deve valere true o false": "flag non booleano",
+		"effetto sconosciuto 'soldi'": "effetto sconosciuto",
+		"location 'inesistente'": "location di uscita inesistente",
+		"chiave 'minimo' non valida in 'karma'": "chiave karma sbagliata",
+		"fascia di karma 'santo'": "fascia sconosciuta",
+		"requisito sconosciuto 'livello'": "requisito sconosciuto",
+		"'stats.forza' deve essere un numero": "valore non numerico",
+		"branch del nodo 'b': oggetto 'spada'": "requisiti dei branch controllati",
+	}
+	for fragment: String in expected:
+		var found: bool = false
+		for issue: String in issues:
+			if issue.contains(fragment):
+				found = true
+				break
+		_check(found, "validatore: segnala %s" % expected[fragment])
+	var missing: PackedStringArray = runner.find_missing_assets()
+	_check(missing.size() == 2 and missing.has("res://non/esiste.webp") and missing.has("res://non/esiste_sfondo.webp"), "validatore: elenca ritratti e sfondi mancanti come segnaposto %s" % [missing])
+	_check(not ", ".join(issues).contains("non/esiste"), "validatore: le immagini mancanti non sono errori")
+	runner.free()
 
 
 ## Percorre il dialogo della spiaggia scegliendo la strada "gentile" e controlla gli effetti.
@@ -213,6 +282,8 @@ func _test_map_scene(game_state: Node) -> void:
 	for zone: MapZone in scene.call(&"get_zones"):
 		zones[zone.location_id] = zone
 		_check(FileAccess.file_exists("res://data/dialogues/%s.json" % zone.location_id), "mappa: dialogo per la zona '%s'" % zone.location_id)
+		var zone_issues: PackedStringArray = game_state.validate_requirements(zone.requires)
+		_check(zone_issues.is_empty(), "mappa: requisiti validi per la zona '%s' %s" % [zone.location_id, zone_issues])
 		# Nel test la MapScene non deve cambiare scena davvero: scollego il suo gestore.
 		zone.zone_selected.disconnect(Callable(scene, &"_on_zone_selected"))
 	_check(zones.size() == 5 and zones.has("viaggio_soverato") and zones.has("spiaggia") and zones.has("giardinetti") and zones.has("giardino_botanico") and zones.has("loft"), "mappa: 5 zone")

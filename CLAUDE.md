@@ -13,7 +13,7 @@ L'utente scrive in italiano: rispondi in italiano.
 
 ## Verifica
 - Smoke test (scena, non `--script`, altrimenti gli autoload non esistono):
-  `"<godot>" --headless --path . res://tests/smoke_test.tscn`. Deve finire con esito OK. Due righe ERROR sono attese: vengono dai test di fallimento voluti.
+  `"<godot>" --headless --path . res://tests/smoke_test.tscn`. Deve finire con esito OK. Due righe ERROR sono attese: vengono dai test di fallimento voluti. Sono attese anche le righe WARNING del dialogo `[rotto]` (test del validatore). Le righe `[info]` elencano le immagini citate dai dialoghi ma non ancora presenti: non sono errori.
 - `--check-only` segnala falsi positivi "Identifier not found" sugli autoload: ignorali e verifica caricando a runtime.
 - I lambda GDScript catturano le variabili locali per valore: per i contatori nei test usa un Array.
 
@@ -30,7 +30,7 @@ L'utente scrive in italiano: rispondi in italiano.
 | `autoload/SaveManager.gd` | Salvataggi JSON (scrive un file tmp e poi lo rinomina). Due slot: `auto` (`user://save.json`) e `manuale` (`user://save_manuale.json`); le funzioni save/load/peek/delete/has prendono lo slot (default `auto`). Salvataggio automatico a ogni ritorno sulla mappa (`SceneManager.scene_changed`) e quando l'app va in background sulla mappa; all'avvio riprende dallo slot `auto`. Si salva solo sulla mappa, mai a metà dialogo. `autosave_enabled = false` disattiva salvataggio automatico e ripresa (usato dai test). |
 | `autoload/SceneManager.gd` | Cambio scena con fade e caricamento threaded. `go_to_location(id)` apre `data/dialogues/<id>.json` nella DialogueScene. Le navigazioni chieste durante una transizione vengono accodate. Se la navigazione fallisce emette `navigation_failed` e torna alla mappa. Overlay: `open_overlay(path, params, pause_game)` / `close_overlay`, `ask_confirmation(...)`. Il tasto indietro chiude l'overlay in cima; altrimenti chiede conferma per uscire (sulla mappa) o per tornare alla mappa (nel dialogo). |
 | `scenes/map/MapScene` + `MapZone` | Mappa in AspectRatioContainer 16:9. Zone (TextureButton): Spiaggia, Giardinetti, GiardinoBotanico, Loft (bloccata finché non c'è il flag `loft_aperto`), ViaggioSoverato. Ogni zona ha `location_id`, `requires` e `locked_hint`. |
-| `scenes/dialogue/DialogueRunner.gd` | Logica (senza UI) dei dialoghi JSON: macchina a stati, `validate()`, gli effetti di un nodo si applicano ogni volta che ci si entra. |
+| `scenes/dialogue/DialogueRunner.gd` | Logica (senza UI) dei dialoghi JSON: macchina a stati; gli effetti di un nodo si applicano ogni volta che ci si entra. `validate()` controlla destinazioni dei nodi, location di `@location:<id>`, slot, personaggi ed espressioni, formato degli sfondi, e `effects`/`requires` tramite `GameState.validate_effects`/`validate_requirements` (chiavi, stats, assi e fasce di karma, oggetti esistenti in `data/items`). `find_missing_assets()` elenca ritratti e sfondi citati ma assenti, che non sono errori: al loro posto si vede un segnaposto. |
 | `scenes/dialogue/DialogueScene` + `CharacterSlot` | UI dei dialoghi JSON: effetto macchina da scrivere, scelte a destra, slot sinistra/centro/destra con ritratti ridimensionati a contenimento. Se il dialogo ha un errore compare il pulsante "Torna alla mappa". |
 | `scenes/ui/GameMenuOverlay` | Menu aperto dal pulsante "Menu" in alto a destra della mappa (in pausa): Salva (slot manuale), Carica e Nuova partita (con conferma; entrambe aggiornano subito lo slot `auto`). Comunica l'esito col segnale `notice`, che la mappa mostra nel toast. |
 | `scenes/ui/ConfirmOverlay`, `SafeAreaMargin.gd` | Finestra modale di conferma (segnali `confirmed` e `close_requested`); margini per la safe area dei telefoni. |
@@ -57,7 +57,7 @@ Le scene ricevono i parametri con `receive_params(params)`, che SceneManager chi
 - I rami che riconvergono puntano allo stesso nodo (vedi `intro_silenzio` e `casa_nonna_01` in `viaggio_soverato.json`).
 
 ## Contenuti
-- Location JSON: spiaggia, giardinetti, loft, giardino_botanico (quest'ultima ha una sola riga placeholder). I testi sono ancora quelli vecchi (taverna/cripta/piazza): l'utente ha chiesto di lasciarli così per ora.
+- Location JSON: spiaggia, giardinetti, loft, giardino_botanico (quest'ultima ha una sola riga placeholder). Spiaggia, giardinetti, loft e giardino_botanico citano immagini non ancora presenti (oste, mirta, capitano e tre sfondi): lo smoke test le elenca nelle righe `[info]`. I testi sono ancora quelli vecchi (taverna/cripta/piazza): l'utente ha chiesto di lasciarli così per ora.
 - `viaggio_soverato.json` (copione dell'utente: intro in auto e casa della nonna), convertito dalla vecchia timeline Dialogic. Contiene un `_todo` sul nodo `valigie_chiedi_02` per una riga tagliata nella foto.
 - **Immagini protette da copyright** (fan art e foto di un attore): spirito, irina, padre. La repo deve **restare privata**; se diventa pubblica vanno rimosse dalla storia git.
 
@@ -70,7 +70,7 @@ Stato verificato sul codice il 2026-11-21.
 - 6. README con: come aggiungere un dialogo, un oggetto, una zona; export Android (JDK, Android SDK, export templates); export iOS (Mac con Xcode). Il commento in testa a `DialogueRunner.gd` rimanda già al README, che non esiste.
 
 **Refactoring proposto (non ancora approvato, chiedi prima):**
-- 4. Validatore più completo. Oggi `validate()` controlla nodo iniziale, destinazioni, slot e id dei personaggi. Non controlla chiavi di `effects`/`requires`, espressioni, file di sfondo e ritratti, né se le `@location:<id>` esistono.
+- ~~4. Validatore più completo~~: fatto. Controlla anche i `requires` delle zone della mappa (nello smoke test).
 - ~~5. Salvataggio solo dalla mappa~~: fatto insieme allo step 5.
 - 6. Salvataggi più robusti: versioning e migrazione. Oggi `from_dict` dà solo un warning se la versione è più recente e non migra; un file di salvataggio illeggibile all'avvio viene ignorato (errore nel log) e si parte da zero.
 - 7. Effetti "una volta sola": oggi gli effetti si riapplicano rivisitando un nodo e le ricompense si possono ripetere (farming).
