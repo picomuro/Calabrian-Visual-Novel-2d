@@ -1,0 +1,247 @@
+{
+	"id": "viaggio_soverato",
+	"start": "intro_01",
+	"characters": {
+		"tu": {
+			"name": "Tu",
+			"color": "#f2c759",
+			"default_expression": "default",
+			"expressions": {
+				"default": "res://assets/characters/spirito/spirito.webp"
+			}
+		},
+		"padre": {
+			"name": "Padre",
+			"color": "#7aa84d",
+			"default_expression": "default",
+			"expressions": {
+				"default": "res://assets/characters/padre/padre.webp"
+			}
+		},
+		"madre": {
+			"name": "Madre",
+			"color": "#d97a8c",
+			"default_expression": "default",
+			"expressions": {
+				"default": "res://assets/characters/lia/lia.webp"
+			}
+		},
+		"irina": {
+			"name": "Irina",
+			"color": "#f28fbf",
+			"default_expression": "default",
+			"expressions": {
+				"default": "res://assets/characters/irina/irina.webp"
+			}
+		}
+	},
+	"nodes": {
+		"intro_01": {
+			"background": "res://assets/backgrounds/viaggio_auto.webp",
+			"characters": {"left": {"id": "tu"}, "right": {"id": "padre"}},
+			"text": "(Entrambe le cuffiette nelle orecchie.)",
+			"next": "intro_02"
+		},
+		"intro_02": {
+			"text": "(Ti togli una cuffietta.)",
+			"next": "intro_03"
+		},
+		"intro_03": {
+			"speaker": "tu",
+			"text": "Che due coglioni... proprio adesso dovevamo andare a Soverato, ho finito la sessione cinque giorni fa!",
+			"next": "intro_04"
+		},
+		"intro_04": {
+			"speaker": "tu",
+			"text": "Ma poi le prime due settimane di agosto! I miei amici sono tutti a Ibiza e io me ne devo stare al mare con la 'nduja!",
+			"next": "intro_05"
+		},
+		"intro_05": {
+			"speaker": "padre",
+			"text": "Smettila di fare i capricci, che non sei più un bambin*. Meno male che tua mamma si è finalmente addormentata, così non ti sente.",
+			"next": "intro_06"
+		},
+		"intro_06": {
+			"speaker": "padre",
+			"text": "Ma non ti rendi conto che potrebbe essere l'ultimo Ferragosto con tua nonna?",
+			"next": "intro_07"
+		},
+		"intro_07": {
+			"speaker": "padre",
+			"text": "(Abbassa la voce) Già penso che non festeggeremo il Natale insieme quest'anno...",
+			"next": "intro_08"
+		},
+		"intro_08": {
+			"speaker": "tu",
+			"text": "[i](È vero... nonnina mia...)[/i]",
+			"next": "intro_scelta"
+		},
+		"intro_scelta": {
+			"speaker": "padre",
+			"text": "Che poi più che il Ferragosto, mi raccomando, è l'ultima Madonna a mare di tua nonna... sai quanto ci tiene...",
+			"choices": [
+				{
+					"text": "Hai ragione...",
+					"effects": {"karma": 5},
+					"next": "intro_hai_ragione"
+				},
+				{
+					"text": "Ma che palle, domani sera suona Tony Pitony all'Ushuaia!",
+					"effects": {"karma": -5},
+					"next": "intro_palle_01"
+				},
+				{
+					"text": "(Resti in silenzio)",
+					"next": "intro_silenzio"
+				}
+			]
+		},
+		"intro_hai_ragione": {
+			"speaker": "tu",
+			"text": "Hai ragione...",
+			"next": "casa_nonna_01"
+		},
+		"intro_palle_01": {
+			"speaker": "tu",
+			"text": "Ma che palle, domani sera suona Tony Pitony all'Ushuaia! E poi smettetela di parlare come se la nonna fosse già morta!",
+			"next": "intro_palle_02"
+		},
+		"intro_palle_02": {
+			"speaker": "padre",
+			"text": "Ma sei veramente un coglione! Io non ti ho cresciuto così.",
+			"next": "intro_palle_03"
+		},
+		"intro_palle_03": {
+			"speaker": "padre",
+			"text": "Non so cosa ti sia successo, forse vi siete fumati il cervello coi tuoi amici del cazzo.",
+			"choices": [
+				{
+					"text": "Ma vaffanculo!",
+					"effects": {"karma": -10},
+					"next": "intro_vaffa_01"
+				},
+				{
+					"text": "(Resti in silenzio)",
+					"next": "intro_silenzio"
+				}
+			]
+		},
+		"intro_vaffa_01": {
+			"speaker": "tu",
+			"text": "Ma vaffanculo!",
+			"next": "intro_vaffa_02"
+		},
+		"intro_vaffa_02": {
+			"text": "(Ti rimetti la cuffietta.)",
+			"next": "intro_vaffa_03"
+		},
+		"intro_vaffa_03": {
+			"speaker": "padre",
+			"text": "Ma come cazzo fai ad essere così, ma porca Madonna!",
+			"next": "intro_vaffa_04"
+		},
+		"intro_vaffa_04": {
+			"characters": {"center": {"id": "madre"}},
+			"text": "(La mamma si sveglia. Parte il litigio...)",
+			"next": "casa_nonna_01"
+		},
+		"intro_silenzio": {
+			"text": "(Resti in silenzio.)",
+			"next": "casa_nonna_01"
+		},
+
+		"casa_nonna_01": {
+			"background": "res://assets/backgrounds/casa_nonna.webp",
+			"clear_characters": true,
+			"characters": {"left": {"id": "tu"}, "center": {"id": "padre"}, "right": {"id": "madre"}},
+			"speaker": "tu",
+			"text": "Meno male che siamo arrivati, mi sto pisciando addosso!",
+			"next": "casa_nonna_02"
+		},
+		"casa_nonna_02": {
+			"speaker": "padre",
+			"text": "Non scappare, dobbiamo scaricare le valigie.",
+			"next": "casa_nonna_03"
+		},
+		"casa_nonna_03": {
+			"text": "(Scendete dalla macchina.)",
+			"next": "casa_nonna_irina"
+		},
+		"casa_nonna_irina": {
+			"characters": {"right": {"id": "irina"}},
+			"speaker": "irina",
+			"text": "Buonasera signori, spero che il viaggio sia andato bene... posso aiutarvi con le valigie?",
+			"choices": [
+				{
+					"text": "Non prendi nessuna valigia e corri a pisciare",
+					"effects": {"karma": -2},
+					"next": "valigie_corri_01"
+				},
+				{
+					"text": "Chiedi a Irina di portarti le valigie",
+					"effects": {"karma": -5},
+					"next": "valigie_chiedi_01"
+				},
+				{
+					"text": "Prendi le valigie e chiedi a Irina di farti strada",
+					"effects": {"karma": 5},
+					"next": "valigie_prendi_01"
+				}
+			]
+		},
+
+		"valigie_corri_01": {
+			"speaker": "tu",
+			"text": "Scusate, mi sto pisciando addosso!",
+			"next": "valigie_corri_02"
+		},
+		"valigie_corri_02": {
+			"text": "(Corri in bagno.)",
+			"next": "valigie_corri_03"
+		},
+		"valigie_corri_03": {
+			"speaker": "padre",
+			"text": "Sei il solito fraccomodo!",
+			"next": "valigie_corri_04"
+		},
+		"valigie_corri_04": {
+			"characters": {"right": {"id": "madre"}},
+			"speaker": "madre",
+			"text": "Si na testa e cazzu. Scusalo Irina, questi ragazzi di oggi...",
+			"next": "@map"
+		},
+
+		"valigie_chiedi_01": {
+			"speaker": "tu",
+			"text": "Certo, guarda, se vuoi questo è il mio zaino, e la mia valigia è quella verde nel bagagliaio.",
+			"next": "valigie_chiedi_02"
+		},
+		"valigie_chiedi_02": {
+			"_todo": "Nel copione questa battuta del padre era tagliata nella foto: da completare.",
+			"speaker": "padre",
+			"text": "Ma quindi le mani le usi solo per scrivere cazzate al telefono? Ma perché pensi che...",
+			"next": "valigie_chiedi_03"
+		},
+		"valigie_chiedi_03": {
+			"speaker": "padre",
+			"text": "Usa quelle cazzo di braccia finché ti funzionano!",
+			"next": "valigie_chiedi_04"
+		},
+		"valigie_chiedi_04": {
+			"characters": {"right": {"id": "madre"}},
+			"speaker": "madre",
+			"text": "U principinu do cazzu arrivau. Io non ti ho cresciuto così.",
+			"next": "valigie_chiedi_05"
+		},
+		"valigie_chiedi_05": {
+			"text": "(Prendi le valigie ed entri in silenzio.)",
+			"next": "@map"
+		},
+
+		"valigie_prendi_01": {
+			"speaker": "tu",
+			"text": "Non ti preoccupare Irina, faccio io, grazie.",
+			"next": "@map"
+		}
+	}
+}

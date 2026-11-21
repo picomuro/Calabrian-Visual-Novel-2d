@@ -86,7 +86,6 @@ func _run() -> void:
 	game_state.reset()
 	await _test_map_scene(game_state)
 	game_state.reset()
-	_test_dialogic_bootstrap()
 	await _test_navigation(game_state)
 	game_state.reset()
 
@@ -206,7 +205,7 @@ func _test_map_scene(game_state: Node) -> void:
 	var zones: Dictionary = {}
 	for zone: MapZone in scene.call(&"get_zones"):
 		zones[zone.location_id] = zone
-		_check(FileAccess.file_exists("res://data/dialogues/%s.json" % zone.location_id) or ResourceLoader.exists("res://data/dialogic/timelines/%s.dtl" % zone.location_id), "mappa: dialogo per la zona '%s'" % zone.location_id)
+		_check(FileAccess.file_exists("res://data/dialogues/%s.json" % zone.location_id), "mappa: dialogo per la zona '%s'" % zone.location_id)
 		# Nel test la MapScene non deve cambiare scena davvero: scollego il suo gestore.
 		zone.zone_selected.disconnect(Callable(scene, &"_on_zone_selected"))
 	_check(zones.size() == 5 and zones.has("viaggio_soverato") and zones.has("spiaggia") and zones.has("giardinetti") and zones.has("giardino_botanico") and zones.has("loft"), "mappa: 5 zone")
@@ -231,18 +230,6 @@ func _test_map_scene(game_state: Node) -> void:
 
 	scene.queue_free()
 	await get_tree().process_frame
-
-
-## Dialogic: se l'elenco dei personaggi in project.godot è vuoto (copia pulita del
-## progetto), DialogicBootstrap lo ricostruisce a runtime.
-func _test_dialogic_bootstrap() -> void:
-	var saved: Dictionary = DialogicResourceUtil.get_directory("dch").duplicate()
-	DialogicResourceUtil.set_directory("dch", {})
-	_check(DialogicResourceUtil.get_character_resource("Tu") == null, "dialogic: elenco personaggi svuotato (simula copia pulita)")
-	DialogicBootstrap.ensure_directories()
-	var character: Resource = DialogicResourceUtil.get_character_resource("Tu")
-	_check(character != null and character.get("display_name") == "Tu", "dialogic: personaggi ripristinati a runtime")
-	DialogicResourceUtil.set_directory("dch", saved)
 
 
 ## Navigazione: richieste in coda, ripiego sulla mappa, errore con uscita, tasto indietro.

@@ -3,8 +3,7 @@ extends Node
 ##
 ## - change_scene(path, params): dissolvenza al nero, caricamento in background,
 ##   sostituzione della scena corrente, dissolvenza di ritorno.
-## - go_to_location(id): apre la timeline Dialogic res://data/dialogic/timelines/<id>.dtl
-##   se esiste, altrimenti la DialogueScene con res://data/dialogues/<id>.json.
+## - go_to_location(id): apre la DialogueScene con res://data/dialogues/<id>.json.
 ## - open_overlay(path): istanzia una scena (inventario, HUD, conferme...) sopra il gioco.
 ## - ask_confirmation(...): finestra modale "Sei sicuro?" che mette in pausa il gioco.
 ##
@@ -32,8 +31,6 @@ signal navigation_failed(target: String, reason: String)
 const MAP_SCENE_PATH: String = "res://scenes/map/MapScene.tscn"
 const DIALOGUE_SCENE_PATH: String = "res://scenes/dialogue/DialogueScene.tscn"
 const DIALOGUES_DIR: String = "res://data/dialogues/"
-const DIALOGIC_SCENE_PATH: String = "res://scenes/dialogue/DialogicScene.tscn"
-const TIMELINES_DIR: String = "res://data/dialogic/timelines/"
 const CONFIRM_OVERLAY_PATH: String = "res://scenes/ui/ConfirmOverlay.tscn"
 
 const FADE_DURATION: float = 0.35
@@ -128,28 +125,18 @@ func change_scene(scene_path: String, params: Dictionary = {}) -> void:
 	_run_pending_navigation()
 
 
-## Entra in una location. Se esiste una timeline Dialogic con quell'id la usa,
-## altrimenti apre la DialogueScene con il file JSON associato.
-## Se la location non ha contenuti, torna alla mappa (mai bloccare il giocatore).
+## Entra in una location aprendo la DialogueScene con il file JSON associato.
+## Se la location non ha un dialogo, torna alla mappa (mai bloccare il giocatore).
 func go_to_location(location_id: String) -> void:
 	if is_transitioning:
 		_defer_navigation(go_to_location.bind(location_id))
 		return
-	var timeline_path: String = get_timeline_path(location_id)
 	var dialogue_path: String = get_dialogue_path(location_id)
-	var scene_path: String = ""
-	var params: Dictionary = {"location_id": location_id}
-	if ResourceLoader.exists(timeline_path):
-		scene_path = DIALOGIC_SCENE_PATH
-		params["timeline_path"] = timeline_path
-	elif FileAccess.file_exists(dialogue_path):
-		scene_path = DIALOGUE_SCENE_PATH
-		params["dialogue_path"] = dialogue_path
-	else:
-		_fail_navigation("location:" + location_id, "nessun dialogo (%s) né timeline (%s)" % [dialogue_path, timeline_path])
+	if not FileAccess.file_exists(dialogue_path):
+		_fail_navigation("location:" + location_id, "nessun dialogo (%s)" % dialogue_path)
 		return
 	GameState.set_current_location(location_id)
-	change_scene(scene_path, params)
+	change_scene(DIALOGUE_SCENE_PATH, {"location_id": location_id, "dialogue_path": dialogue_path})
 
 
 ## Torna alla mappa.
@@ -170,11 +157,6 @@ func is_on_map() -> bool:
 ## Convenzione: un file JSON per location, con lo stesso nome dell'id.
 static func get_dialogue_path(location_id: String) -> String:
 	return DIALOGUES_DIR.path_join(location_id + ".json")
-
-
-## Convenzione per Dialogic: una timeline .dtl per location, con lo stesso nome dell'id.
-static func get_timeline_path(location_id: String) -> String:
-	return TIMELINES_DIR.path_join(location_id + ".dtl")
 
 
 ## Memorizza una navigazione arrivata durante una transizione (vince l'ultima).
