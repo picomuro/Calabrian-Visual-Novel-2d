@@ -4,8 +4,6 @@ Visual novel 2D in **Godot 4.7.2**, scritta solo in **GDScript**, per **Android 
 
 Il giocatore si muove su una **mappa** a zone. Ogni zona apre un **dialogo** scritto in JSON, con scelte che cambiano karma, statistiche, inventario e flag della storia. La partita si salva da sola ogni volta che si torna sulla mappa.
 
-> ⚠️ Alcune immagini dei personaggi (spirito, irina, padre) sono protette da copyright. La repository deve restare **privata**. Se un giorno diventa pubblica, vanno prima tolte dalla storia git.
-
 ---
 
 ## Indice
