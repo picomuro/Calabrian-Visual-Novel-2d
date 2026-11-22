@@ -100,6 +100,8 @@ func _run() -> void:
 	game_state.reset()
 	await _test_map_scene(game_state)
 	game_state.reset()
+	await _test_hud_and_inventory(game_state)
+	game_state.reset()
 	await _test_save_slots_and_menu(game_state, save_manager)
 	game_state.reset()
 	await _test_save_robustness(game_state, save_manager)
@@ -654,6 +656,62 @@ func _write_text(path: String, text: String) -> void:
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	file.store_string(text)
 	file.close()
+
+
+## HUD della mappa (karma, statistiche, pulsante Zaino) e overlay dello zaino.
+func _test_hud_and_inventory(game_state: Node) -> void:
+	var sm: Node = get_tree().root.get_node(^"/root/SceneManager")
+	var map: Control = (load("res://scenes/map/MapScene.tscn") as PackedScene).instantiate()
+	get_tree().root.add_child(map)
+	await get_tree().process_frame
+	var hud: Control = map.get_node(^"%Hud")
+	var karma_label: Label = hud.get_node(^"%KarmaLabel")
+	var stats_label: Label = hud.get_node(^"%StatsLabel")
+	var bag_button: Button = hud.get_node(^"%InventoryButton")
+	_check(karma_label.text == "Karma +0 · neutro" and stats_label.text == "Forza 1   Carisma 1   Intelligenza 1" and bag_button.text == "Zaino", "hud: valori di inizio partita")
+	game_state.add_karma(12)
+	game_state.add_stat("carisma", 2)
+	_check(karma_label.text == "Karma +12 · buono" and stats_label.text.contains("Carisma 3"), "hud: si aggiorna da solo quando cambia lo stato")
+	game_state.add_karma(-30)
+	_check(karma_label.text == "Karma -18 · cattivo", "hud: karma negativo e fascia cattiva")
+
+	# Zaino vuoto.
+	bag_button.pressed.emit()
+	var bag: Node = sm.get_overlay(map.INVENTORY_PATH)
+	_check(bag != null and get_tree().paused, "zaino: si apre dal pulsante dell'HUD, gioco in pausa")
+	if bag == null:
+		map.queue_free()
+		return
+	_check((bag.get_node(^"%EmptyLabel") as Label).visible and bag.call(&"get_shown_names").is_empty(), "zaino: vuoto a inizio partita")
+	sm.call(&"_handle_back")
+	_check(sm.get_overlay(map.INVENTORY_PATH) == null and not get_tree().paused, "zaino: indietro lo chiude e toglie la pausa")
+
+	# Zaino con oggetti: ordine alfabetico, quantità, oggetto senza file mostrato con l'id.
+	game_state.add_item("moneta", 3)
+	game_state.add_item("medaglione")
+	game_state.add_item("chiave_antica")
+	game_state.add_item("oggetto_senza_file")
+	_check(bag_button.text == "Zaino (6)", "hud: il pulsante conta gli oggetti")
+	bag = map.call(&"open_inventory")
+	await get_tree().process_frame
+	var names: PackedStringArray = bag.call(&"get_shown_names")
+	_check(names == PackedStringArray(["Chiave antica", "Medaglione dello spirito", "Moneta", "oggetto_senza_file"]), "zaino: oggetti in ordine alfabetico %s" % [names])
+	_check(not (bag.get_node(^"%EmptyLabel") as Label).visible and _find_label_text(bag, "×3"), "zaino: quantità mostrata")
+	(bag.get_node(^"%CloseButton") as Button).pressed.emit()
+	_check(not sm.has_open_overlay() and not get_tree().paused, "zaino: Chiudi lo chiude")
+	(hud.get_node(^"%MenuButton") as Button).pressed.emit()
+	_check(sm.get_overlay(map.GAME_MENU_PATH) != null, "hud: il pulsante Menu apre il menu")
+	sm.call(&"_handle_back")
+	map.queue_free()
+	await get_tree().process_frame
+
+
+## True se sotto [param root] c'è una Label con esattamente quel testo.
+func _find_label_text(root: Node, text: String) -> bool:
+	for node: Node in root.find_children("*", "Label", true, false):
+		if (node as Label).text == text:
+			return true
+	return false
 
 
 ## Navigazione: richieste in coda, ripiego sulla mappa, errore con uscita, tasto indietro.

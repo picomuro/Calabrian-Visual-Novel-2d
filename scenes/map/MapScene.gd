@@ -14,18 +14,20 @@ extends Control
 const TOAST_VISIBLE_TIME: float = 2.5
 const TOAST_FADE_TIME: float = 0.25
 const GAME_MENU_PATH: String = "res://scenes/ui/GameMenuOverlay.tscn"
+const INVENTORY_PATH: String = "res://scenes/ui/InventoryOverlay.tscn"
 
 var _toast_tween: Tween
 
 @onready var _map_frame: Control = %MapFrame
 @onready var _toast_panel: PanelContainer = %ToastPanel
 @onready var _toast_label: Label = %ToastLabel
-@onready var _open_menu_button: Button = %OpenMenuButton
+@onready var _hud: Control = %Hud
 
 
 func _ready() -> void:
 	_toast_panel.modulate.a = 0.0
-	_open_menu_button.pressed.connect(open_game_menu)
+	_hud.connect(&"inventory_requested", open_inventory)
+	_hud.connect(&"menu_requested", open_game_menu)
 	for zone: MapZone in get_zones():
 		zone.zone_selected.connect(_on_zone_selected)
 		zone.locked_zone_selected.connect(_on_locked_zone_selected)
@@ -33,6 +35,11 @@ func _ready() -> void:
 	var startup_notice: String = SaveManager.take_startup_notice()
 	if not startup_notice.is_empty():
 		show_toast(startup_notice)
+
+
+## Apre lo zaino mettendo il gioco in pausa.
+func open_inventory() -> Node:
+	return SceneManager.open_overlay(INVENTORY_PATH, {}, true)
 
 
 ## Apre il menu (salva, carica, nuova partita) mettendo il gioco in pausa.

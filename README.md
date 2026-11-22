@@ -2,7 +2,7 @@
 
 Visual novel 2D in **Godot 4.7.2**, scritta solo in **GDScript**, per **Android e iOS** in orientamento orizzontale.
 
-Il giocatore si muove su una **mappa** a zone. Ogni zona apre un **dialogo** scritto in JSON, con scelte che cambiano karma, statistiche, inventario e flag della storia. La partita si salva da sola ogni volta che si torna sulla mappa.
+Il giocatore si muove su una **mappa** a zone. Ogni zona apre un **dialogo** scritto in JSON, con scelte che cambiano karma, statistiche, inventario e flag della storia. In cima alla mappa ci sono karma e statistiche, lo **zaino** con gli oggetti e il **menu**. La partita si salva da sola ogni volta che si torna sulla mappa.
 
 ---
 
@@ -45,7 +45,7 @@ data/
 scenes/
   map/                 mappa e zone cliccabili
   dialogue/            scena del dialogo, motore dei dialoghi (DialogueRunner), ritratti
-  ui/                  menu di gioco, finestra di conferma, margini per notch e bordi
+  ui/                  HUD della mappa, zaino, menu di gioco, finestra di conferma, margini per notch e bordi
 assets/                sfondi, personaggi, tema grafico
 tests/                 smoke test
 ```
@@ -181,7 +181,7 @@ I personaggi si prendono da `data/characters.json` usando il loro id: `tu`, `pad
    - `display_name`: il nome mostrato, es. `Ciambella della nonna`;
    - `description`: la descrizione per l'inventario;
    - `icon`: l'immagine dell'oggetto; per ora va bene un segnaposto.
-3. Da quel momento l'oggetto si può usare in effetti e requisiti: `"items": {"ciambella": 1}`. Il validatore segnala gli id che non hanno il loro file.
+3. Da quel momento l'oggetto si può usare in effetti e requisiti: `"items": {"ciambella": 1}`. Il validatore segnala gli id che non hanno il loro file. Quando il giocatore lo ottiene, compare nello **zaino** con icona, nome e descrizione.
 
 ## Come aggiungere una zona (location)
 
@@ -207,7 +207,7 @@ Lo smoke test controlla che ogni zona sia nel registro e che ogni location abbia
 ## Salvataggi
 
 - **Automatico:** a ogni ritorno sulla mappa e quando l'app va in background sulla mappa. All'avvio il gioco riprende da lì. Non si salva mai a metà dialogo.
-- **Manuale:** pulsante **Menu** sulla mappa, poi **Salva**. Dallo stesso menu ci sono anche **Carica** (torna al salvataggio manuale) e **Nuova partita**.
+- **Manuale:** pulsante **Menu** in alto a destra sulla mappa, poi **Salva**. Dallo stesso menu ci sono anche **Carica** (torna al salvataggio manuale) e **Nuova partita**.
 - **File:** `user://save.json` e `user://save_manuale.json`, più le copie di sicurezza `.bak`. Su Windows `user://` è `%APPDATA%\Godot\app_userdata\Madonna's Quest\`.
 - **Se un file si rovina,** il gioco carica la copia `.bak` e conserva quello rotto come `.illeggibile`.
 
