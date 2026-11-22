@@ -7,7 +7,8 @@ extends Control
 ## più sugli schermi più larghi del 16:9 (es. 20:9) è riempito dal colore di sfondo.
 ##
 ## Le zone sono figlie di %MapFrame: per aggiungerne una basta istanziare
-## MapZone.tscn lì dentro e impostare location_id (vedi README).
+## MapZone.tscn lì dentro e impostare location_id; la location va anche aggiunta a
+## data/locations.json e serve il suo data/dialogues/<id>.json (vedi README).
 
 
 const TOAST_VISIBLE_TIME: float = 2.5

@@ -2,7 +2,7 @@
 
 Visual novel 2D in **Godot 4.7.2 (build mono, ma il codice è solo GDScript)**, destinata ad **Android e iOS**, in orientamento orizzontale.
 Repo privata: https://github.com/picomuro/Calabrian-Visual-Novel-2d (branch `main`).
-L'utente scrive in italiano: rispondi in italiano.
+L'utente scrive in italiano: rispondi in italiano. Guida per chi scrive contenuti ed export: `README.md`.
 
 ## Regole di lavoro (richieste dall'utente)
 - Procedi **un passo alla volta** e fermati dopo ogni step con un riassunto. Se l'utente chiede un'analisi o una review, **non modificare i file** finché non approva.
@@ -72,7 +72,7 @@ Stato verificato sul codice il 2026-11-21.
 **Step originali mancanti:**
 - 4. Inventario e HUD (karma, stats) come overlay. Non esiste ancora nessuna scena; `SceneManager.open_overlay` è già pronto per ospitarle.
 - ~~5. UI e flusso di salvataggio/caricamento~~: fatto (salvataggio automatico + menu della mappa, vedi SaveManager e GameMenuOverlay).
-- 6. README con: come aggiungere un dialogo, un oggetto, una zona; export Android (JDK, Android SDK, export templates); export iOS (Mac con Xcode). Il commento in testa a `DialogueRunner.gd` rimanda già al README, che non esiste.
+- ~~6. README~~: fatto (`README.md`: avvio, struttura, test, come aggiungere dialogo/personaggio/oggetto/zona, salvataggi, export Android e iOS secondo la documentazione di Godot 4.7). Se cambi un formato dati o un flusso, aggiorna anche il README.
 
 **Refactoring proposto (tutti fatti):**
 - ~~4. Validatore più completo~~: fatto. Controlla anche i `requires` delle zone della mappa (nello smoke test).
